@@ -47,3 +47,7 @@ If your paths differ, set:
 ## Status
 
 This is an alpha-quality touch mod. Core map, world map, UI tap repair, and zoom gestures are implemented, but touch behavior varies across devices and operating systems. Please test on real hardware before relying on it in a long colony session.
+
+## License
+
+GPL-3.0-or-later.

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ModMetaData>
+  <name>RimTouch</name>
+  <author>Tatsuki Tanaka</author>
+  <packageId>tatsuki.rimtouch</packageId>
+  <supportedVersions>
+    <li>1.6</li>
+  </supportedVersions>
+  <modDependencies>
+    <li>
+      <packageId>brrainz.harmony</packageId>
+      <displayName>Harmony</displayName>
+      <steamWorkshopUrl>steam://url/CommunityFilePage/2009463077</steamWorkshopUrl>
+      <downloadUrl>https://github.com/pardeike/HarmonyRimWorld/releases/latest</downloadUrl>
+    </li>
+    <li>
+      <packageId>ray1203.SimpleCameraSetting</packageId>
+      <displayName>SimpleCameraSetting</displayName>
+      <steamWorkshopUrl>steam://url/CommunityFilePage/3232415388</steamWorkshopUrl>
+      <downloadUrl>https://github.com/ray1203/SimpleCameraSetting</downloadUrl>
+    </li>
+  </modDependencies>
+  <description>
+Adds an experimental direct touch input layer for RimWorld: touch tap repair, one-finger map pan/selection, long-press right click, double tap, two-finger pan, pinch zoom, world map touch controls, and UI scale unlock.
+
+Primary target is Windows touch devices such as Microsoft Surface. Linux support is actively being developed; the mod will likely start and work there when Unity reports touch input correctly, but Linux support is still experimental.
+  </description>
+</ModMetaData>

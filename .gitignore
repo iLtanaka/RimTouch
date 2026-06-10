@@ -1,0 +1,20 @@
+# Local tooling and extracted packages
+.tools/
+AGENTS.md
+
+# RimWorld / Unity logs and local state
+*.log
+Player.log
+Player-prev.log
+
+# Build intermediates
+*.pdb
+*.mdb
+bin/
+obj/
+
+# OS/editor noise
+Thumbs.db
+.DS_Store
+.vs/
+.vscode/
