@@ -43,12 +43,13 @@ namespace RimTouch
         private const float TwoFingerCancelTapSeconds = 0.42f;
         private const float TwoFingerCancelMoveSlopPixels = 18f;
         private const float TwoFingerCancelDistanceSlopPixels = 18f;
-        private const float DefaultZoomInertiaStrength = 0.22f;
-        private const float DefaultZoomInertiaDamping = 7.5f;
-        private const float MinZoomInertiaStartSpeed = 0.035f;
-        private const float MinZoomInertiaSpeed = 0.01f;
-        private const int ZoomVelocitySampleCapacity = 5;
-        private const float ZoomVelocityHistorySeconds = 0.12f;
+        private const float DefaultZoomInertiaStrength = 1.05f;
+        private const float DefaultZoomInertiaDamping = 4.8f;
+        private const float MinZoomInertiaStartSpeed = 0.25f;
+        private const float MinZoomInertiaSpeed = 0.06f;
+        private const float MaxZoomInertiaSpeed = 8f;
+        private const int ZoomVelocitySampleCapacity = 6;
+        private const float ZoomVelocityHistorySeconds = 0.14f;
 
         private static readonly FieldInfo CameraRootPosField = AccessTools.Field(typeof(CameraDriver), "rootPos");
         private static readonly FieldInfo CameraRootSizeField = AccessTools.Field(typeof(CameraDriver), "rootSize");
@@ -119,6 +120,8 @@ namespace RimTouch
         private static Vector3 panVelocity;
         private static Vector2 worldPanVelocity;
         private static Vector2 pendingWorldCameraDolly;
+        private static Vector2 zoomInertiaGui;
+        private static bool zoomInertiaAnchorValid;
         private static float zoomVelocity;
         private static float lastUpdateTime;
         private static float lastPanSampleTime;
@@ -797,7 +800,9 @@ namespace RimTouch
             cameraDriver.SetRootPosAndSize(GetCameraRootPos(cameraDriver), targetSize);
             Vector3 after = GuiToMapPosition(midpointGui);
             cameraDriver.SetRootPosAndSize(GetCameraRootPos(cameraDriver) + (before - after), targetSize);
-            SampleZoomVelocity(targetSize - currentSize);
+            zoomInertiaGui = midpointGui;
+            zoomInertiaAnchorValid = true;
+            SampleZoomVelocity(currentSize, targetSize);
         }
 
         private static void ApplyWorldPinchZoom(float previousDistance, float currentDistance)
@@ -819,7 +824,8 @@ namespace RimTouch
             float targetAltitude = Mathf.Clamp(currentAltitude * zoomRatio, WorldCameraDriver.MinAltitude, maxAltitude);
             WorldCameraAltitudeField.SetValue(driver, targetAltitude);
             WorldCameraDesiredAltitudeField.SetValue(driver, targetAltitude);
-            SampleZoomVelocity(targetAltitude - currentAltitude);
+            zoomInertiaAnchorValid = false;
+            SampleZoomVelocity(currentAltitude, targetAltitude);
             if (WorldCameraMouseBottomEdgeStartField != null)
             {
                 WorldCameraMouseBottomEdgeStartField.SetValue(driver, 0f);
@@ -853,23 +859,24 @@ namespace RimTouch
             panVelocity = GetRecentPanVelocity(now);
         }
 
-        private static void SampleZoomVelocity(float zoomDelta)
+        private static void SampleZoomVelocity(float previousValue, float currentValue)
         {
             float now = Time.realtimeSinceStartup;
             float dt = now - lastZoomSampleTime;
             lastZoomSampleTime = now;
 
-            if (dt <= 0.0001f || dt > 0.18f)
+            if (dt <= 0.0001f || dt > 0.18f || previousValue <= 0f || currentValue <= 0f)
             {
                 return;
             }
 
-            float velocity = zoomDelta / dt;
+            float velocity = Mathf.Log(currentValue / previousValue) / dt;
             if (float.IsNaN(velocity) || float.IsInfinity(velocity))
             {
                 return;
             }
 
+            velocity = Mathf.Clamp(velocity, -MaxZoomInertiaSpeed, MaxZoomInertiaSpeed);
             RecordZoomVelocitySample(velocity, now);
             zoomVelocity = GetRecentZoomVelocity(now);
         }
@@ -928,13 +935,31 @@ namespace RimTouch
 
             if (Mathf.Abs(zoomVelocity) > MinZoomInertiaSpeed && ZoomInertiaStrength > 0f)
             {
-                size = Mathf.Clamp(size + zoomVelocity * ZoomInertiaStrength * dt, GetMinZoomSize(cameraDriver), GetMaxZoomSize(cameraDriver));
-                zoomVelocity *= Mathf.Exp(-ZoomInertiaDamping * dt);
-                changed = true;
+                float targetSize = Mathf.Clamp(size * Mathf.Exp(zoomVelocity * ZoomInertiaStrength * dt), GetMinZoomSize(cameraDriver), GetMaxZoomSize(cameraDriver));
+                if (Mathf.Abs(targetSize - size) > 0.001f)
+                {
+                    if (zoomInertiaAnchorValid)
+                    {
+                        cameraDriver.SetRootPosAndSize(rootPos, size);
+                        Vector3 before = GuiToMapPosition(zoomInertiaGui);
+                        cameraDriver.SetRootPosAndSize(rootPos, targetSize);
+                        Vector3 after = GuiToMapPosition(zoomInertiaGui);
+                        rootPos = GetCameraRootPos(cameraDriver) + (before - after);
+                    }
+                    size = targetSize;
+                    zoomVelocity *= Mathf.Exp(ZoomInertiaDamping * -dt);
+                    changed = true;
+                }
+                else
+                {
+                    zoomVelocity = 0f;
+                    zoomInertiaAnchorValid = false;
+                }
             }
             else
             {
                 zoomVelocity = 0f;
+                zoomInertiaAnchorValid = false;
             }
 
             if (changed)
@@ -991,10 +1016,17 @@ namespace RimTouch
             {
                 float currentAltitude = (float)WorldCameraAltitudeField.GetValue(driver);
                 float maxAltitude = WorldCameraMaxAltitudeField != null ? (float)WorldCameraMaxAltitudeField.GetValue(driver) : 75f;
-                float targetAltitude = Mathf.Clamp(currentAltitude + zoomVelocity * ZoomInertiaStrength * dt, WorldCameraDriver.MinAltitude, maxAltitude);
-                WorldCameraAltitudeField.SetValue(driver, targetAltitude);
-                WorldCameraDesiredAltitudeField.SetValue(driver, targetAltitude);
-                zoomVelocity *= Mathf.Exp(-ZoomInertiaDamping * dt);
+                float targetAltitude = Mathf.Clamp(currentAltitude * Mathf.Exp(zoomVelocity * ZoomInertiaStrength * dt), WorldCameraDriver.MinAltitude, maxAltitude);
+                if (Mathf.Abs(targetAltitude - currentAltitude) > 0.001f)
+                {
+                    WorldCameraAltitudeField.SetValue(driver, targetAltitude);
+                    WorldCameraDesiredAltitudeField.SetValue(driver, targetAltitude);
+                    zoomVelocity *= Mathf.Exp(ZoomInertiaDamping * -dt);
+                }
+                else
+                {
+                    zoomVelocity = 0f;
+                }
             }
             else
             {
@@ -1037,6 +1069,7 @@ namespace RimTouch
                 if (Mathf.Abs(zoomVelocity) < MinZoomInertiaStartSpeed)
                 {
                     zoomVelocity = 0f;
+                    zoomInertiaAnchorValid = false;
                 }
             }
             else
@@ -1053,6 +1086,8 @@ namespace RimTouch
             worldInertiaAnchorValid = false;
             worldInertiaAnchorPoint = Vector3.zero;
             worldInertiaGui = Vector2.zero;
+            zoomInertiaGui = Vector2.zero;
+            zoomInertiaAnchorValid = false;
             zoomVelocity = 0f;
         }
 
@@ -1858,24 +1893,62 @@ namespace RimTouch
                 return;
             }
 
-            bool clickedDirectlyOnCaravan;
-            bool usedColonistBar;
-            IEnumerator<WorldObject> enumerator = selector.SelectableObjectsUnderMouse(out clickedDirectlyOnCaravan, out usedColonistBar).GetEnumerator();
-            try
+            PlanetTile tile;
+            if (TryGetWorldTileAtGui(gui, out tile))
             {
-                if (enumerator.MoveNext())
-                {
-                    selector.ClearSelection();
-                    selector.Select(enumerator.Current, true);
-                    return;
-                }
+                selector.SelectFirstOrNextAt(tile);
+                return;
             }
-            finally
+
+            List<WorldObject> objects = GenWorldUI.WorldObjectsUnderMouse(gui);
+            if (objects != null && objects.Count > 0)
             {
-                enumerator.Dispose();
+                selector.ClearSelection();
+                selector.Select(objects[0], true);
+                return;
             }
 
             selector.ClearSelection();
+        }
+
+        private static bool TryGetWorldTileAtGui(Vector2 gui, out PlanetTile tile)
+        {
+            tile = PlanetTile.Invalid;
+
+            if (Find.World == null || Find.World.renderer == null)
+            {
+                return false;
+            }
+
+            WorldCameraDriver driver = Find.WorldCameraDriver;
+            Camera camera = GetWorldCamera(driver);
+            if (camera == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                Ray ray = camera.ScreenPointToRay(GuiToScreenPoint(gui));
+                RaycastHit hit;
+                bool hitWorld = Physics.Raycast(ray, out hit, WorldCameraManager.FarClipPlane, WorldCameraManager.WorldLayerMask);
+                if (!hitWorld)
+                {
+                    hitWorld = Physics.Raycast(ray, out hit, WorldCameraManager.FarClipPlane);
+                }
+                if (!hitWorld)
+                {
+                    return false;
+                }
+
+                tile = Find.World.renderer.GetTileFromRayHit(hit);
+                return tile.Valid;
+            }
+            catch
+            {
+                tile = PlanetTile.Invalid;
+                return false;
+            }
         }
 
         private static void DoMapRightClick(Vector2 gui)

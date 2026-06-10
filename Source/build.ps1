@@ -31,6 +31,7 @@ New-Item -ItemType Directory -Force -Path (Split-Path -Parent $out) | Out-Null
   /reference:"$managed\UnityEngine.CoreModule.dll" `
   /reference:"$managed\UnityEngine.IMGUIModule.dll" `
   /reference:"$managed\UnityEngine.InputLegacyModule.dll" `
+  /reference:"$managed\UnityEngine.PhysicsModule.dll" `
   /reference:"$managed\UnityEngine.TextRenderingModule.dll" `
   /reference:"$harmony" `
   (Join-Path $PSScriptRoot "*.cs")

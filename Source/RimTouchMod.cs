@@ -32,10 +32,10 @@ namespace RimTouch
             Settings.panInertiaDamping = listing.Slider(Settings.panInertiaDamping, 1f, 10f);
 
             listing.Label("Zoom inertia strength: " + Settings.zoomInertiaStrength.ToString("0.00"));
-            Settings.zoomInertiaStrength = listing.Slider(Settings.zoomInertiaStrength, 0f, 1f);
+            Settings.zoomInertiaStrength = listing.Slider(Settings.zoomInertiaStrength, 0f, 2f);
 
             listing.Label("Zoom inertia damping: " + Settings.zoomInertiaDamping.ToString("0.00"));
-            Settings.zoomInertiaDamping = listing.Slider(Settings.zoomInertiaDamping, 1f, 14f);
+            Settings.zoomInertiaDamping = listing.Slider(Settings.zoomInertiaDamping, 1f, 10f);
 
             listing.Gap();
             if (listing.ButtonText("Reset touch tuning"))
@@ -53,15 +53,16 @@ namespace RimTouch
         public bool enableTouchMode = true;
         public float panInertiaStrength = 1.05f;
         public float panInertiaDamping = 4.8f;
-        public float zoomInertiaStrength = 0.22f;
-        public float zoomInertiaDamping = 7.5f;
+        public float zoomInertiaStrength = 1.05f;
+        public float zoomInertiaDamping = 4.8f;
+        public int settingsVersion = 1;
 
         public void ResetTouchTuning()
         {
             panInertiaStrength = 1.05f;
             panInertiaDamping = 4.8f;
-            zoomInertiaStrength = 0.22f;
-            zoomInertiaDamping = 7.5f;
+            zoomInertiaStrength = 1.05f;
+            zoomInertiaDamping = 4.8f;
         }
 
         public override void ExposeData()
@@ -69,8 +70,22 @@ namespace RimTouch
             Scribe_Values.Look(ref enableTouchMode, "enableTouchMode", true);
             Scribe_Values.Look(ref panInertiaStrength, "panInertiaStrength", 1.05f);
             Scribe_Values.Look(ref panInertiaDamping, "panInertiaDamping", 4.8f);
-            Scribe_Values.Look(ref zoomInertiaStrength, "zoomInertiaStrength", 0.22f);
-            Scribe_Values.Look(ref zoomInertiaDamping, "zoomInertiaDamping", 7.5f);
+            Scribe_Values.Look(ref zoomInertiaStrength, "zoomInertiaStrength", 1.05f);
+            Scribe_Values.Look(ref zoomInertiaDamping, "zoomInertiaDamping", 4.8f);
+            Scribe_Values.Look(ref settingsVersion, "settingsVersion", 0);
+
+            if (Scribe.mode == LoadSaveMode.PostLoadInit && settingsVersion < 1)
+            {
+                if (Mathf.Abs(zoomInertiaStrength - 0.22f) < 0.001f)
+                {
+                    zoomInertiaStrength = 1.05f;
+                }
+                if (Mathf.Abs(zoomInertiaDamping - 7.5f) < 0.001f)
+                {
+                    zoomInertiaDamping = 4.8f;
+                }
+                settingsVersion = 1;
+            }
         }
     }
 }
