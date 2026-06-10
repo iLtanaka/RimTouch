@@ -1,0 +1,165 @@
+name: Touch bug report
+description: Report a broken touch gesture, UI tap issue, camera issue, or device-specific problem.
+title: "[Bug]: "
+labels: ["bug", "needs-triage"]
+body:
+
+* type: markdown
+  attributes:
+  value: |
+  Thanks for testing RimTouch.
+
+  ```
+  Please fill out this form with as much detail as possible. Touch behavior can depend on your device, OS, RimWorld build, Unity input behavior, and active mod list.
+  ```
+
+* type: checkboxes
+  id: existing-issues
+  attributes:
+  label: Existing issues
+  description: Please check whether this problem has already been reported.
+  options:
+  - label: I have searched the existing issues.
+  required: true
+
+* type: input
+  id: device
+  attributes:
+  label: Device
+  description: What device are you using?
+  placeholder: "Example: Surface Pro 8, Surface Laptop Studio, Steam Deck OLED, Lenovo Yoga"
+  validations:
+  required: true
+
+* type: input
+  id: os
+  attributes:
+  label: Operating system
+  description: Include the OS name and version.
+  placeholder: "Example: Windows 11 24H2, Ubuntu 24.04, SteamOS"
+  validations:
+  required: true
+
+* type: input
+  id: rimworld-version
+  attributes:
+  label: RimWorld version
+  placeholder: "Example: 1.6.x"
+  validations:
+  required: true
+
+* type: dropdown
+  id: rimworld-build
+  attributes:
+  label: RimWorld build/source
+  options:
+  - Steam
+  - GOG
+  - Epic
+  - Other
+  validations:
+  required: false
+
+* type: input
+  id: rimtouch-version
+  attributes:
+  label: RimTouch version or commit
+  description: Use the release version, commit hash, or date when you downloaded the mod.
+  placeholder: "Example: v0.1.0 or commit 709be64"
+  validations:
+  required: false
+
+* type: dropdown
+  id: gesture
+  attributes:
+  label: What failed?
+  description: Pick the closest option.
+  options:
+  - UI tap / button press
+  - Double tap
+  - One-finger map pan
+  - Hold-to-select / drag selection
+  - Long press / right click
+  - Two-finger map pan
+  - Pinch zoom
+  - World map pan
+  - World map pinch zoom
+  - Two-finger cancel
+  - UI scale
+  - Mod does not load
+  - Crash or error
+  - Other
+  validations:
+  required: true
+
+* type: textarea
+  id: current-behavior
+  attributes:
+  label: What happened?
+  description: Describe the actual behavior.
+  placeholder: "Example: Pinch zoom works on the local map, but on the world map the camera jumps to the pole."
+  validations:
+  required: true
+
+* type: textarea
+  id: expected-behavior
+  attributes:
+  label: What did you expect to happen?
+  placeholder: "Example: The world map should zoom smoothly around the midpoint between my fingers."
+  validations:
+  required: true
+
+* type: textarea
+  id: steps
+  attributes:
+  label: Steps to reproduce
+  description: Please write the exact steps needed to reproduce the issue.
+  placeholder: |
+  1. Start RimWorld 1.6.
+  2. Enable Harmony, SimpleCameraSetting, and RimTouch.
+  3. Load a colony.
+  4. Use two fingers to pinch zoom on the world map.
+  5. The camera jumps / ignores the gesture / opens a menu.
+  validations:
+  required: true
+
+* type: textarea
+  id: mod-list
+  attributes:
+  label: Active mod list
+  description: Paste your active mod list. Please mention UI, camera, input, performance, and map mods.
+  placeholder: |
+  - Harmony
+  - SimpleCameraSetting
+  - RimTouch
+  - ...
+  validations:
+  required: true
+
+* type: checkboxes
+  id: minimal-mod-test
+  attributes:
+  label: Minimal mod test
+  description: Testing with only required mods helps separate RimTouch bugs from mod conflicts.
+  options:
+  - label: I tested with only Harmony, SimpleCameraSetting, and RimTouch enabled.
+  required: false
+  - label: I cannot test with a minimal mod list right now.
+  required: false
+
+* type: textarea
+  id: logs
+  attributes:
+  label: Logs
+  description: Paste or attach Player.log / HugsLib log if available.
+  placeholder: "Drag and drop log files here, or paste the relevant RimTouch / Harmony errors."
+  validations:
+  required: false
+
+* type: textarea
+  id: extra
+  attributes:
+  label: Additional context
+  description: Screenshots, videos, save files, device settings, touchpad/touchscreen notes, or anything else.
+  validations:
+  required: false
