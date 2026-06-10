@@ -48,6 +48,27 @@ If your paths differ, set:
 
 This is an alpha-quality touch mod. Core map, world map, UI tap repair, and zoom gestures are implemented, but touch behavior varies across devices and operating systems. Please test on real hardware before relying on it in a long colony session.
 
+## Reporting touch issues
+
+RimTouch depends heavily on your hardware, operating system, Unity/RimWorld input behavior, and active mod list. If something does not work correctly, please open a GitHub issue and include as much detail as possible.
+
+Please include:
+
+* Device model, for example: Surface Pro 8, Steam Deck OLED, Lenovo Yoga, etc.
+* Operating system and version, for example: Windows 11 24H2, Ubuntu 24.04, SteamOS.
+* RimWorld version.
+* RimTouch version or commit.
+* Whether you use Steam, GOG, or another RimWorld build.
+* Full active mod list, especially UI, camera, input, or performance mods.
+* What gesture failed: tap, double tap, one-finger pan, long press, two-finger pan, pinch zoom, world map gesture, UI scale, etc.
+* What you expected to happen.
+* What actually happened.
+* Whether the issue happens with only Harmony, SimpleCameraSetting, and RimTouch enabled.
+* Player.log or HugsLib log, if available.
+
+Short reports like “touch does not work” are hard to fix. A good report makes it much easier to reproduce the problem and improve the mod.
+
+
 ## License
 
 GPL-3.0-or-later.
