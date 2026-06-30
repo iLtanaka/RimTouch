@@ -10,21 +10,13 @@ namespace RimTouch
     [StaticConstructorOnStartup]
     public static class RimTouchBootstrap
     {
-        private static Harmony harmony;
-
         static RimTouchBootstrap()
         {
             TryUnlockUiScales();
 
-            harmony = new Harmony("tatsuki.rimtouch");
+            Harmony harmony = new Harmony("tatsuki.rimtouch");
             harmony.PatchAll();
-            SimpleCameraSettingCompatibility.Apply(harmony, true);
             Log.Message("[RimTouch] Loaded touch input MVP.");
-        }
-
-        public static void ApplyCompatibilityPatches()
-        {
-            SimpleCameraSettingCompatibility.Apply(harmony);
         }
 
         private static void TryUnlockUiScales()
@@ -82,8 +74,6 @@ namespace RimTouch
     {
         public static void Prefix()
         {
-            RimTouchBootstrap.ApplyCompatibilityPatches();
-            RimTouchMod.ApplyExtendedZoomRange();
             TouchInputDriver.Update();
         }
     }
@@ -93,7 +83,6 @@ namespace RimTouch
     {
         public static void Postfix()
         {
-            RimTouchBootstrap.ApplyCompatibilityPatches();
             TouchInputDriver.Update();
         }
     }

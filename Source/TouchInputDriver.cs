@@ -146,8 +146,8 @@ namespace RimTouch
         private static float lastWorldPanSampleTime;
         private static float lastZoomSampleTime;
         private static float panGestureDistance;
-        private static bool hasDetectedDragMovement;
-        private static float dragMovementStartElapsed;
+        private static float lastSignificantMovementElapsed;
+        private static bool selectPrimed;
         private static readonly Vector3[] PanVelocitySamples = new Vector3[PanVelocitySampleCapacity];
         private static readonly float[] PanVelocitySampleTimes = new float[PanVelocitySampleCapacity];
         private static int panVelocitySampleIndex;
@@ -540,8 +540,8 @@ namespace RimTouch
                 rightClickDone = false;
                 suppressReleaseTap = false;
                 panGestureDistance = 0f;
-                hasDetectedDragMovement = false;
-                dragMovementStartElapsed = 0f;
+                lastSignificantMovementElapsed = 0f;
+                selectPrimed = false;
                 ClearInertiaSamples();
                 if (!startedOverUi)
                 {
@@ -599,20 +599,27 @@ namespace RimTouch
                 SuppressVanillaMapInputFallout();
                 CancelRimWorldDragBox();
 
-                if (!hasDetectedDragMovement && moveDistance > MovementDetectionSlopPixels)
+                float frameDelta = Vector2.Distance(gui, lastGui);
+                if (frameDelta > MovementDetectionSlopPixels)
                 {
-                    // Latch the elapsed time the instant real movement is first noticed, using a
-                    // small threshold that real finger motion crosses almost immediately. Without
-                    // this, on a frame-rate dip the engine might only "see" the finger after it has
-                    // already moved past DragSlopPixels, by which point the live elapsed time has
-                    // drifted past SelectHoldSeconds purely because frames were sparse - causing a
-                    // normal fast scroll to be misclassified as a SelectionHold drag at random,
-                    // depending on frame timing ("works every other time").
-                    hasDetectedDragMovement = true;
-                    dragMovementStartElapsed = elapsed;
+                    // The finger is actively, continuously moving right now - keep pushing back
+                    // the "last significant movement" timestamp so a slow but steady drag never
+                    // accumulates enough stationary time to be mistaken for a long-press-hold.
+                    lastSignificantMovementElapsed = elapsed;
                 }
 
-                if (moveDistance > DragSlopPixels && hasDetectedDragMovement && dragMovementStartElapsed < SelectHoldSeconds)
+                float stationaryDuration = elapsed - lastSignificantMovementElapsed;
+                if (!selectPrimed && stationaryDuration >= SelectHoldSeconds && moveDistance <= RightClickHoldSlopPixels)
+                {
+                    // The finger has genuinely sat still (no meaningful per-frame movement) for
+                    // long enough, without having already wandered past the slop. Only now do we
+                    // treat a subsequent drag as an intentional "hold-then-select" gesture instead
+                    // of a pan - matching "hold WITHOUT movement -> SelectionHold" literally,
+                    // regardless of how fast or slow the eventual drag itself turns out to be.
+                    selectPrimed = true;
+                }
+
+                if (moveDistance > DragSlopPixels && !selectPrimed)
                 {
                     mode = TouchMode.MapPan;
                     panAnchorMap = startMap;
@@ -629,7 +636,7 @@ namespace RimTouch
                     suppressReleaseTap = true;
                     CancelRimWorldDragBox();
                 }
-                else if (moveDistance > RightClickHoldSlopPixels && hasDetectedDragMovement && dragMovementStartElapsed >= SelectHoldSeconds)
+                else if (moveDistance > RightClickHoldSlopPixels && selectPrimed)
                 {
                     mode = TouchMode.SelectionHold;
                     suppressReleaseTap = true;
@@ -1321,8 +1328,8 @@ namespace RimTouch
             worldPanAnchorValid = false;
             worldPanAnchorPoint = Vector3.zero;
             panGestureDistance = 0f;
-            hasDetectedDragMovement = false;
-            dragMovementStartElapsed = 0f;
+            lastSignificantMovementElapsed = 0f;
+            selectPrimed = false;
             lastTwoFingerDistance = 0f;
             lastTwoFingerMidpoint = Vector2.zero;
             twoFingerStartGuiA = Vector2.zero;

@@ -5,12 +5,7 @@ namespace RimTouch
 {
     public sealed class RimTouchMod : Mod
     {
-        internal const bool DefaultExtendedZoomEnabled = true;
-        internal const float DefaultExtendedZoomInMin = 5f;
-        internal const float DefaultExtendedZoomOutMax = 120f;
-
         public static RimTouchSettings Settings;
-        private static int lastExtendedZoomApplyFrame = -1000;
 
         public RimTouchMod(ModContentPack content) : base(content)
         {
@@ -49,7 +44,7 @@ namespace RimTouch
             }
 
             listing.GapLine();
-            listing.Label("Extended zoom range (used when SimpleCameraSetting is not active; if SimpleCameraSetting is active, its zoom range settings are left in control).");
+            listing.Label("Extended zoom range (replaces SimpleCameraSetting's zoom range; this mod only writes the zoom range once at game start/load, it does not replace any vanilla per-frame camera logic).");
             bool extendedZoomEnabledBefore = Settings.extendedZoomEnabled;
             listing.CheckboxLabeled("Enable extended zoom range", ref Settings.extendedZoomEnabled, "Lets you zoom in closer and out further than vanilla allows.");
 
@@ -62,19 +57,19 @@ namespace RimTouch
             listing.Gap();
             if (listing.ButtonText("Apply zoom range now"))
             {
-                ApplyExtendedZoomRange(true);
+                ApplyExtendedZoomRange();
             }
             if (listing.ButtonText("Reset zoom range to default"))
             {
                 Settings.ResetZoomRange();
-                ApplyExtendedZoomRange(true);
+                ApplyExtendedZoomRange();
             }
 
             if (Settings.extendedZoomEnabled != extendedZoomEnabledBefore || Settings.extendedZoomEnabled)
             {
                 // Re-apply live so dragging the sliders gives immediate feedback in-game instead
                 // of only taking effect after the next save/load.
-                ApplyExtendedZoomRange(true);
+                ApplyExtendedZoomRange();
             }
 
             listing.End();
@@ -83,24 +78,10 @@ namespace RimTouch
 
         public static void ApplyExtendedZoomRange()
         {
-            ApplyExtendedZoomRange(false);
-        }
-
-        public static void ApplyExtendedZoomRange(bool force)
-        {
             if (Settings == null || !Settings.extendedZoomEnabled)
             {
                 return;
             }
-            if (SimpleCameraSettingCompatibility.IsLoaded)
-            {
-                return;
-            }
-            if (!force && Time.frameCount - lastExtendedZoomApplyFrame < 120)
-            {
-                return;
-            }
-            lastExtendedZoomApplyFrame = Time.frameCount;
 
             CameraDriver cameraDriver = Find.CameraDriver;
             if (cameraDriver == null || cameraDriver.config == null)
@@ -110,14 +91,8 @@ namespace RimTouch
 
             float min = Mathf.Clamp(Settings.extendedZoomInMin, 0.5f, 11f);
             float max = Mathf.Max(min + 1f, Settings.extendedZoomOutMax);
-            if (!Mathf.Approximately(cameraDriver.config.sizeRange.min, min))
-            {
-                cameraDriver.config.sizeRange.min = min;
-            }
-            if (!Mathf.Approximately(cameraDriver.config.sizeRange.max, max))
-            {
-                cameraDriver.config.sizeRange.max = max;
-            }
+            cameraDriver.config.sizeRange.min = min;
+            cameraDriver.config.sizeRange.max = max;
         }
     }
 
@@ -128,10 +103,10 @@ namespace RimTouch
         public float panInertiaDamping = 4.8f;
         public float zoomInertiaStrength = 1.05f;
         public float zoomInertiaDamping = 4.8f;
-        public bool extendedZoomEnabled = RimTouchMod.DefaultExtendedZoomEnabled;
-        public float extendedZoomInMin = RimTouchMod.DefaultExtendedZoomInMin;
-        public float extendedZoomOutMax = RimTouchMod.DefaultExtendedZoomOutMax;
-        public int settingsVersion = 2;
+        public bool extendedZoomEnabled = false;
+        public float extendedZoomInMin = 5f;
+        public float extendedZoomOutMax = 90f;
+        public int settingsVersion = 1;
 
         public void ResetTouchTuning()
         {
@@ -143,9 +118,8 @@ namespace RimTouch
 
         public void ResetZoomRange()
         {
-            extendedZoomEnabled = RimTouchMod.DefaultExtendedZoomEnabled;
-            extendedZoomInMin = RimTouchMod.DefaultExtendedZoomInMin;
-            extendedZoomOutMax = RimTouchMod.DefaultExtendedZoomOutMax;
+            extendedZoomInMin = 5f;
+            extendedZoomOutMax = 90f;
         }
 
         public override void ExposeData()
@@ -155,34 +129,22 @@ namespace RimTouch
             Scribe_Values.Look(ref panInertiaDamping, "panInertiaDamping", 4.8f);
             Scribe_Values.Look(ref zoomInertiaStrength, "zoomInertiaStrength", 1.05f);
             Scribe_Values.Look(ref zoomInertiaDamping, "zoomInertiaDamping", 4.8f);
-            Scribe_Values.Look(ref extendedZoomEnabled, "extendedZoomEnabled", RimTouchMod.DefaultExtendedZoomEnabled);
-            Scribe_Values.Look(ref extendedZoomInMin, "extendedZoomInMin", RimTouchMod.DefaultExtendedZoomInMin);
-            Scribe_Values.Look(ref extendedZoomOutMax, "extendedZoomOutMax", RimTouchMod.DefaultExtendedZoomOutMax);
+            Scribe_Values.Look(ref extendedZoomEnabled, "extendedZoomEnabled", false);
+            Scribe_Values.Look(ref extendedZoomInMin, "extendedZoomInMin", 5f);
+            Scribe_Values.Look(ref extendedZoomOutMax, "extendedZoomOutMax", 90f);
             Scribe_Values.Look(ref settingsVersion, "settingsVersion", 0);
 
-            if (Scribe.mode == LoadSaveMode.PostLoadInit)
+            if (Scribe.mode == LoadSaveMode.PostLoadInit && settingsVersion < 1)
             {
-                int loadedVersion = settingsVersion;
-                if (loadedVersion < 1)
+                if (Mathf.Abs(zoomInertiaStrength - 0.22f) < 0.001f)
                 {
-                    if (Mathf.Abs(zoomInertiaStrength - 0.22f) < 0.001f)
-                    {
-                        zoomInertiaStrength = 1.05f;
-                    }
-                    if (Mathf.Abs(zoomInertiaDamping - 7.5f) < 0.001f)
-                    {
-                        zoomInertiaDamping = 4.8f;
-                    }
+                    zoomInertiaStrength = 1.05f;
                 }
-                if (loadedVersion < 2)
+                if (Mathf.Abs(zoomInertiaDamping - 7.5f) < 0.001f)
                 {
-                    extendedZoomEnabled = RimTouchMod.DefaultExtendedZoomEnabled;
-                    if (Mathf.Abs(extendedZoomOutMax - 90f) < 0.001f)
-                    {
-                        extendedZoomOutMax = RimTouchMod.DefaultExtendedZoomOutMax;
-                    }
+                    zoomInertiaDamping = 4.8f;
                 }
-                settingsVersion = 2;
+                settingsVersion = 1;
             }
         }
     }

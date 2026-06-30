@@ -11,6 +11,33 @@ namespace RimTouch
 {
     public static partial class TouchInputDriver
     {
+        private static bool IsInspectPaneLikelyVisible()
+        {
+            // Vanilla only draws the bottom-left inspect panel when something is selected
+            // (a pawn, an item stack, a zone, etc). Without this check, that whole screen
+            // region was being treated as "UI" unconditionally, even when it was genuinely
+            // bare map - silently breaking one-finger pan/select there (while two-finger
+            // pinch zoom, which never checks this, kept working fine), with no visible
+            // cause on screen. This is only ever called while on the local map.
+            //
+            // NOTE: this currently only checks pawn selection (SelectedPawns is already used
+            // elsewhere in this codebase, so it's a known-safe API call). Selecting a building,
+            // item stack, or zone also opens the inspect pane and isn't covered yet - if that
+            // turns out to still misbehave, swap/extend this for Find.Selector.NumSelected (or
+            // SelectedObjects) once verified against the target RimWorld version's API.
+            try
+            {
+                List<Pawn> selectedPawns = Find.Selector != null ? Find.Selector.SelectedPawns : null;
+                return selectedPawns != null && selectedPawns.Count > 0;
+            }
+            catch
+            {
+                // If this check ever throws (version drift, etc.), fail safe back to "treat as
+                // UI" so we don't regress to the old false-negative behavior.
+                return true;
+            }
+        }
+
         private static bool IsLikelyUiPosition(Vector2 gui)
         {
             WindowStack stack = Find.WindowStack;
@@ -25,7 +52,7 @@ namespace RimTouch
             {
                 return true;
             }
-            if (Find.CurrentMap != null && gui.x < 700f && gui.y > height - 380f)
+            if (Find.CurrentMap != null && gui.x < 700f && gui.y > height - 380f && IsInspectPaneLikelyVisible())
             {
                 return true;
             }

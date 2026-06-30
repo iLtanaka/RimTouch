@@ -340,7 +340,7 @@ namespace RimTouch
 
         private static bool ShouldUseWorldAnchorPan()
         {
-            return WorldCameraSphereRotationField != null && WorldCameraCachedCameraField != null;
+            return Current.ProgramState == ProgramState.Playing && Find.CurrentMap != null;
         }
 
         private static bool TryGetWorldAltitude(WorldCameraDriver driver, out float altitude)
