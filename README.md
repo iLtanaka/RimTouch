@@ -24,7 +24,7 @@ RimTouch targets Windows touch devices first, especially Microsoft Surface-style
 
 ## Optional Compatibility
 
-- SimpleCameraSetting (`ray1203.SimpleCameraSetting`) can be used for local map zoom range and zoom speed settings. When it is active, RimTouch leaves those zoom settings in control and disables only SimpleCameraSetting's `CameraMapConfig.ConfigFixedUpdate_60` prefix, which otherwise replaces vanilla camera fixed-update logic and can make touch camera control unstable.
+- SimpleCameraSetting (`ray1203.simplecamerasetting`) is not required. RimTouch has its own extended zoom range setting. If you use SimpleCameraSetting anyway, load RimTouch after it and test touch panning carefully because camera-control mods can affect gesture stability.
 
 ## Installation
 
@@ -70,7 +70,7 @@ Please include:
 * Whether the issue happens with only Harmony and RimTouch enabled.
 * Player.log or HugsLib log, if available.
 
-Short reports like “touch does not work” are hard to fix. A good report makes it much easier to reproduce the problem and improve the mod.
+Short reports like "touch does not work" are hard to fix. A good report makes it much easier to reproduce the problem and improve the mod.
 
 
 ## License

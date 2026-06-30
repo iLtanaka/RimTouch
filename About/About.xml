@@ -15,11 +15,11 @@
     </li>
   </modDependencies>
   <loadAfter>
-    <li>ray1203.SimpleCameraSetting</li>
+    <li>ray1203.simplecamerasetting</li>
   </loadAfter>
   <description>
-Adds an experimental direct touch input layer for RimWorld: touch tap repair, one-finger map pan/selection, long-press right click, double tap, two-finger pan, pinch zoom, world map touch controls, and UI scale unlock.
+Adds an experimental direct touch input layer for RimWorld: UI tap repair, one-finger map pan, hold selection, long-press right click, double tap, two-finger pan, pinch zoom, world map touch controls, input suppression, extended zoom range, and UI scale unlock.
 
-Primary target is Windows touch devices such as Microsoft Surface. Linux support is actively being developed; the mod will likely start and work there when Unity reports touch input correctly, but Linux support is still experimental.
+Primary target is Windows touch devices such as Microsoft Surface tablets and laptops. Linux touch support is experimental and depends on Unity reporting touch input through the legacy input API.
   </description>
 </ModMetaData>

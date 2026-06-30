@@ -16,7 +16,7 @@ namespace RimTouch
 
             Harmony harmony = new Harmony("tatsuki.rimtouch");
             harmony.PatchAll();
-            Log.Message("[RimTouch] Loaded touch input MVP.");
+            Log.Message("[RimTouch] Loaded touch input support.");
         }
 
         private static void TryUnlockUiScales()

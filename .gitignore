@@ -12,6 +12,7 @@ Player-prev.log
 *.mdb
 bin/
 obj/
+Publish/
 
 # OS/editor noise
 Thumbs.db
