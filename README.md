@@ -15,17 +15,21 @@ RimTouch targets Windows touch devices first, especially Microsoft Surface-style
 - World map touch pan and pinch zoom.
 - Two-finger tap to cancel active designator/targeter tools.
 - UI scale list unlock up to `3.0x`.
-- SimpleCameraSetting-compatible local map zoom range.
+- Runtime camera zoom range support, including ranges changed by other camera mods.
 
 ## Requirements
 
 - RimWorld `1.6`.
 - Harmony.
-- SimpleCameraSetting.
+
+## Optional Compatibility
+
+- SimpleCameraSetting (`ray1203.SimpleCameraSetting`) can be used for local map zoom range and zoom speed settings. When it is active, RimTouch leaves those zoom settings in control and disables only SimpleCameraSetting's `CameraMapConfig.ConfigFixedUpdate_60` prefix, which otherwise replaces vanilla camera fixed-update logic and can make touch camera control unstable.
 
 ## Installation
 
-Copy this folder into RimWorld's `Mods` directory and enable it after Harmony and SimpleCameraSetting.
+Copy this folder into RimWorld's `Mods` directory and enable it after Harmony.
+If you use SimpleCameraSetting, load RimTouch after it.
 
 For the current local development setup, the built assembly is:
 
@@ -63,7 +67,7 @@ Please include:
 * What gesture failed: tap, double tap, one-finger pan, long press, two-finger pan, pinch zoom, world map gesture, UI scale, etc.
 * What you expected to happen.
 * What actually happened.
-* Whether the issue happens with only Harmony, SimpleCameraSetting, and RimTouch enabled.
+* Whether the issue happens with only Harmony and RimTouch enabled.
 * Player.log or HugsLib log, if available.
 
 Short reports like “touch does not work” are hard to fix. A good report makes it much easier to reproduce the problem and improve the mod.

@@ -1,6 +1,7 @@
 using HarmonyLib;
 using RimWorld;
 using RimWorld.Planet;
+using System.Reflection;
 using UnityEngine;
 using Verse;
 
@@ -9,16 +10,33 @@ namespace RimTouch
     [StaticConstructorOnStartup]
     public static class RimTouchBootstrap
     {
+        private static Harmony harmony;
+
         static RimTouchBootstrap()
         {
-            AccessTools.Field(typeof(Dialog_Options), "UIScales").SetValue(null, new[]
+            TryUnlockUiScales();
+
+            harmony = new Harmony("tatsuki.rimtouch");
+            harmony.PatchAll();
+            SimpleCameraSettingCompatibility.Apply(harmony, true);
+            Log.Message("[RimTouch] Loaded touch input MVP.");
+        }
+
+        public static void ApplyCompatibilityPatches()
+        {
+            SimpleCameraSettingCompatibility.Apply(harmony);
+        }
+
+        private static void TryUnlockUiScales()
+        {
+            FieldInfo uiScalesField = ReflectionGuard.Field(typeof(Dialog_Options), "UIScales");
+            if (!ReflectionGuard.TrySetField(uiScalesField, null, new[]
             {
                 0.75f, 0.85f, 1.0f, 1.1f, 1.25f, 1.35f, 1.5f, 1.75f, 2.0f, 2.25f, 2.5f, 3.0f
-            });
-
-            Harmony harmony = new Harmony("tatsuki.rimtouch");
-            harmony.PatchAll();
-            Log.Message("[RimTouch] Loaded touch input MVP.");
+            }))
+            {
+                Log.Warning("[RimTouch] UI scale unlock skipped; continuing without it.");
+            }
         }
 
         public static void PostprocessButtonTap(Rect rect, ref bool result)
@@ -41,11 +59,31 @@ namespace RimTouch
         }
     }
 
+    [HarmonyPatch(typeof(Game), "InitNewGame")]
+    public static class GameInitNewGamePatch
+    {
+        public static void Postfix()
+        {
+            RimTouchMod.ApplyExtendedZoomRange();
+        }
+    }
+
+    [HarmonyPatch(typeof(Game), "LoadGame")]
+    public static class GameLoadGamePatch
+    {
+        public static void Postfix()
+        {
+            RimTouchMod.ApplyExtendedZoomRange();
+        }
+    }
+
     [HarmonyPatch(typeof(Root_Play), "Update")]
     public static class RootPlayUpdatePatch
     {
         public static void Prefix()
         {
+            RimTouchBootstrap.ApplyCompatibilityPatches();
+            RimTouchMod.ApplyExtendedZoomRange();
             TouchInputDriver.Update();
         }
     }
@@ -55,6 +93,7 @@ namespace RimTouch
     {
         public static void Postfix()
         {
+            RimTouchBootstrap.ApplyCompatibilityPatches();
             TouchInputDriver.Update();
         }
     }
@@ -119,6 +158,21 @@ namespace RimTouch
         public static bool Prefix()
         {
             return !TouchInputDriver.ShouldSuppressVanillaWorldDragBoxDrawing;
+        }
+    }
+
+    [HarmonyPatch(typeof(WorldDrawLayer_MouseTile), "get_Tile")]
+    public static class WorldDrawLayerMouseTilePatch
+    {
+        public static bool Prefix(ref PlanetTile __result)
+        {
+            if (!TouchInputDriver.ShouldSuppressWorldHover)
+            {
+                return true;
+            }
+
+            __result = PlanetTile.Invalid;
+            return false;
         }
     }
 
@@ -211,6 +265,20 @@ namespace RimTouch
         public static bool Prefix()
         {
             return !TouchInputDriver.ShouldSuppressMainTabsFromGesture;
+        }
+    }
+
+    [HarmonyPatch(typeof(ColonistBarColonistDrawer), "HandleClicks")]
+    public static class ColonistBarColonistDrawerHandleClicksPatch
+    {
+        public static void Postfix(Rect rect, Pawn colonist)
+        {
+            if (colonist == null || !TouchTapRepair.TryConsumeDoubleTap(rect))
+            {
+                return;
+            }
+
+            CameraJumper.TryJumpAndSelect(new GlobalTargetInfo(colonist), CameraJumper.MovementMode.Pan);
         }
     }
 

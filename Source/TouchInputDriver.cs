@@ -9,12 +9,14 @@ using Verse;
 
 namespace RimTouch
 {
-    public static class TouchInputDriver
+    public static partial class TouchInputDriver
     {
-        private const float DragSlopPixels = 12f;
-        private const float SelectHoldSeconds = 0.22f;
+        private const float DragSlopPixels = 18f;
+        private const float MovementDetectionSlopPixels = 6f;
+        private const int TouchDropoutGraceFrames = 2;
+        private const float SelectHoldSeconds = 0.32f;
         private const float RightClickHoldSeconds = 0.50f;
-        private const float RightClickHoldSlopPixels = 14f;
+        private const float RightClickHoldSlopPixels = 22f;
         private const float TouchMapTargetRadiusPixels = 28f;
         private const float FallbackMinZoomSize = 11f;
         private const float FallbackMaxZoomSize = 60f;
@@ -50,35 +52,39 @@ namespace RimTouch
         private const float MaxZoomInertiaSpeed = 8f;
         private const int ZoomVelocitySampleCapacity = 6;
         private const float ZoomVelocityHistorySeconds = 0.14f;
+        private const float MinUiScrollInertiaStartSpeed = 120f;
+        private const float MinUiScrollInertiaSpeed = 8f;
+        private const float MaxUiScrollInertiaSpeed = 5000f;
+        private const int UiScrollVelocitySampleCapacity = 5;
+        private const float UiScrollVelocityHistorySeconds = 0.12f;
 
-        private static readonly FieldInfo CameraRootPosField = AccessTools.Field(typeof(CameraDriver), "rootPos");
-        private static readonly FieldInfo CameraRootSizeField = AccessTools.Field(typeof(CameraDriver), "rootSize");
-        private static readonly FieldInfo CameraVelocityField = AccessTools.Field(typeof(CameraDriver), "velocity");
-        private static readonly FieldInfo CameraDesiredDollyField = AccessTools.Field(typeof(CameraDriver), "desiredDolly");
-        private static readonly FieldInfo CameraDesiredDollyRawField = AccessTools.Field(typeof(CameraDriver), "desiredDollyRaw");
-        private static readonly FieldInfo CameraMouseBottomEdgeStartField = AccessTools.Field(typeof(CameraDriver), "mouseTouchingScreenBottomEdgeStartTime");
-        private static readonly FieldInfo SelectorDragBoxField = AccessTools.Field(typeof(Selector), "dragBox");
-        private static readonly FieldInfo DragBoxActiveField = AccessTools.Field(typeof(DragBox), "active");
-        private static readonly FieldInfo DragBoxStartField = AccessTools.Field(typeof(DragBox), "start");
-        private static readonly FieldInfo FloatMenuOptionActionField = AccessTools.Field(typeof(FloatMenuOption), "action");
-        private static readonly MethodInfo SelectorSelectInsideDragBoxMethod = AccessTools.Method(typeof(Selector), "SelectInsideDragBox");
-        private static readonly MethodInfo FloatMenuMakerMapGetAutoTakeOptionMethod = AccessTools.Method(typeof(FloatMenuMakerMap), "GetAutoTakeOption");
-        private static readonly FieldInfo WorldCameraDesiredRotationRawField = AccessTools.Field(typeof(WorldCameraDriver), "desiredRotationRaw");
-        private static readonly FieldInfo WorldCameraRotationVelocityField = AccessTools.Field(typeof(WorldCameraDriver), "rotationVelocity");
-        private static readonly FieldInfo WorldCameraMouseBottomEdgeStartField = AccessTools.Field(typeof(WorldCameraDriver), "mouseTouchingScreenBottomEdgeStartTime");
-        private static readonly FieldInfo WorldCameraAltitudeField = AccessTools.Field(typeof(WorldCameraDriver), "altitude");
-        private static readonly FieldInfo WorldCameraDesiredAltitudeField = AccessTools.Field(typeof(WorldCameraDriver), "desiredAltitude");
-        private static readonly FieldInfo WorldCameraMaxAltitudeField = AccessTools.Field(typeof(WorldCameraDriver), "MaxAltitude");
-        private static readonly FieldInfo WorldCameraSphereRotationField = AccessTools.Field(typeof(WorldCameraDriver), "sphereRotation");
-        private static readonly FieldInfo WorldCameraSphereRadiusField = AccessTools.Field(typeof(WorldCameraDriver), "SphereRadius");
-        private static readonly FieldInfo WorldCameraLayerOriginOffsetField = AccessTools.Field(typeof(WorldCameraDriver), "layerOriginOffset");
-        private static readonly FieldInfo WorldCameraCachedCameraField = AccessTools.Field(typeof(WorldCameraDriver), "cachedCamera");
-        private static readonly MethodInfo WorldCameraApplyPositionMethod = AccessTools.Method(typeof(WorldCameraDriver), "ApplyPositionToGameObject");
-        private static readonly FieldInfo WorldSelectorDragBoxField = AccessTools.Field(typeof(WorldSelector), "dragBox");
-        private static readonly FieldInfo WorldDragBoxActiveField = AccessTools.Field(typeof(WorldDragBox), "active");
-        private static readonly PropertyInfo WorldRenderedNowProperty = AccessTools.Property(typeof(WorldRendererUtility), "WorldRenderedNow");
-        private static readonly MethodInfo WorldRenderedNowGetter = AccessTools.Method(typeof(WorldRendererUtility), "get_WorldRenderedNow");
-        private static readonly FieldInfo WorldRenderedNowField = AccessTools.Field(typeof(WorldRendererUtility), "WorldRenderedNow");
+        private static readonly FieldInfo CameraRootPosField = ReflectionGuard.Field(typeof(CameraDriver), "rootPos");
+        private static readonly FieldInfo CameraRootSizeField = ReflectionGuard.Field(typeof(CameraDriver), "rootSize");
+        private static readonly FieldInfo CameraVelocityField = ReflectionGuard.Field(typeof(CameraDriver), "velocity");
+        private static readonly FieldInfo CameraDesiredDollyField = ReflectionGuard.Field(typeof(CameraDriver), "desiredDolly");
+        private static readonly FieldInfo CameraDesiredDollyRawField = ReflectionGuard.Field(typeof(CameraDriver), "desiredDollyRaw");
+        private static readonly FieldInfo CameraMouseBottomEdgeStartField = ReflectionGuard.Field(typeof(CameraDriver), "mouseTouchingScreenBottomEdgeStartTime");
+        private static readonly FieldInfo SelectorDragBoxField = ReflectionGuard.Field(typeof(Selector), "dragBox");
+        private static readonly FieldInfo DragBoxActiveField = ReflectionGuard.Field(typeof(DragBox), "active");
+        private static readonly FieldInfo DragBoxStartField = ReflectionGuard.Field(typeof(DragBox), "start");
+        private static readonly FieldInfo FloatMenuOptionActionField = ReflectionGuard.Field(typeof(FloatMenuOption), "action");
+        private static readonly MethodInfo SelectorSelectInsideDragBoxMethod = ReflectionGuard.Method(typeof(Selector), "SelectInsideDragBox");
+        private static readonly MethodInfo FloatMenuMakerMapGetAutoTakeOptionMethod = ReflectionGuard.Method(typeof(FloatMenuMakerMap), "GetAutoTakeOption");
+        private static readonly FieldInfo WorldCameraRotationVelocityField = ReflectionGuard.Field(typeof(WorldCameraDriver), "rotationVelocity");
+        private static readonly FieldInfo WorldCameraMouseBottomEdgeStartField = ReflectionGuard.Field(typeof(WorldCameraDriver), "mouseTouchingScreenBottomEdgeStartTime");
+        private static readonly FieldInfo WorldCameraAltitudeField = ReflectionGuard.Field(typeof(WorldCameraDriver), "altitude");
+        private static readonly FieldInfo WorldCameraDesiredAltitudeField = ReflectionGuard.Field(typeof(WorldCameraDriver), "desiredAltitude");
+        private static readonly FieldInfo WorldCameraMaxAltitudeField = ReflectionGuard.Field(typeof(WorldCameraDriver), "MaxAltitude", false);
+        private static readonly FieldInfo WorldCameraSphereRotationField = ReflectionGuard.Field(typeof(WorldCameraDriver), "sphereRotation");
+        private static readonly FieldInfo WorldCameraSphereRadiusField = ReflectionGuard.Field(typeof(WorldCameraDriver), "SphereRadius", false);
+        private static readonly FieldInfo WorldCameraLayerOriginOffsetField = ReflectionGuard.Field(typeof(WorldCameraDriver), "layerOriginOffset", false);
+        private static readonly FieldInfo WorldCameraCachedCameraField = ReflectionGuard.Field(typeof(WorldCameraDriver), "cachedCamera");
+        private static readonly MethodInfo WorldCameraApplyPositionMethod = ReflectionGuard.Method(typeof(WorldCameraDriver), "ApplyPositionToGameObject");
+        private static readonly FieldInfo WorldSelectorDragBoxField = ReflectionGuard.Field(typeof(WorldSelector), "dragBox");
+        private static readonly FieldInfo WorldDragBoxActiveField = ReflectionGuard.Field(typeof(WorldDragBox), "active");
+        private static readonly PropertyInfo WorldRenderedNowProperty = ReflectionGuard.Property(typeof(WorldRendererUtility), "WorldRenderedNow", false);
+        private static readonly MethodInfo WorldRenderedNowGetter = ReflectionGuard.Method(typeof(WorldRendererUtility), "get_WorldRenderedNow", false);
+        private static readonly FieldInfo WorldRenderedNowField = ReflectionGuard.Field(typeof(WorldRendererUtility), "WorldRenderedNow", false);
 
         private static TouchMode mode = TouchMode.None;
         private static int primaryFingerId = -1;
@@ -114,8 +120,20 @@ namespace RimTouch
         private static int suppressVanillaMapInputUntilFrame = -1000;
         private static bool ignoreTouchesUntilAllReleased;
         private static bool hadTouchLastFrame;
+        private static int touchDropoutFrames;
         private static bool suppressEdgeScrollUntilMouseMoves;
         private static bool suppressVanillaMapUntilMouseMoves;
+        private static bool uiScrollGestureActive;
+        private static Rect uiScrollActiveRect;
+        private static Vector2 uiScrollLastGui;
+        private static int lastUiScrollApplyFrame = -1000;
+        private static Vector2 uiScrollVelocity;
+        private static bool uiScrollInertiaActive;
+        private static Rect uiScrollInertiaRect;
+        private static float lastUiScrollSampleTime;
+        private static float lastUiScrollInertiaTime;
+        private static float uiScrollInertiaStartTime;
+        private static int lastUiScrollInertiaApplyFrame = -1000;
         private static Vector3 mousePositionWhenTouchEnded;
         private static Vector3 panVelocity;
         private static Vector2 worldPanVelocity;
@@ -128,6 +146,8 @@ namespace RimTouch
         private static float lastWorldPanSampleTime;
         private static float lastZoomSampleTime;
         private static float panGestureDistance;
+        private static bool hasDetectedDragMovement;
+        private static float dragMovementStartElapsed;
         private static readonly Vector3[] PanVelocitySamples = new Vector3[PanVelocitySampleCapacity];
         private static readonly float[] PanVelocitySampleTimes = new float[PanVelocitySampleCapacity];
         private static int panVelocitySampleIndex;
@@ -140,6 +160,10 @@ namespace RimTouch
         private static readonly float[] WorldPanVelocitySampleTimes = new float[WorldPanVelocitySampleCapacity];
         private static int worldPanVelocitySampleIndex;
         private static int worldPanVelocitySampleCount;
+        private static readonly Vector2[] UiScrollVelocitySamples = new Vector2[UiScrollVelocitySampleCapacity];
+        private static readonly float[] UiScrollVelocitySampleTimes = new float[UiScrollVelocitySampleCapacity];
+        private static int uiScrollVelocitySampleIndex;
+        private static int uiScrollVelocitySampleCount;
         private static readonly Vector2[] MapTargetSearchOffsets = new Vector2[]
         {
             Vector2.zero,
@@ -176,6 +200,7 @@ namespace RimTouch
             {
                 return TouchModeEnabled
                     && (Input.touchCount >= 2
+                        || uiScrollGestureActive
                         || Time.frameCount <= suppressUiClickUntilFrame
                         || Time.frameCount - lastMultiTouchFrame <= 30);
             }
@@ -187,6 +212,7 @@ namespace RimTouch
             {
                 return TouchModeEnabled
                     && (Input.touchCount >= 2
+                        || uiScrollGestureActive
                         || HasCurrentOneFingerLocalMapTouch()
                         || Time.frameCount <= suppressWindowCloseUntilFrame
                         || Time.frameCount - lastMultiTouchFrame <= 30);
@@ -219,7 +245,8 @@ namespace RimTouch
                 int count = Math.Min(Input.touchCount, 2);
                 for (int i = 0; i < count; i++)
                 {
-                    if (rect.Contains(TouchToGui(Input.GetTouch(i).position)))
+                    Vector2 gui = TouchToGui(Input.GetTouch(i).position);
+                    if (rect.Contains(GuiToLocalGuiPoint(gui)) || rect.Contains(gui))
                     {
                         return true;
                     }
@@ -372,14 +399,16 @@ namespace RimTouch
             }
         }
 
-        private enum TouchMode
+        public static bool ShouldSuppressWorldHover
         {
-            None,
-            OneFinger,
-            MapPan,
-            SelectionHold,
-            TwoFinger,
-            VanillaMapTool
+            get
+            {
+                return TouchModeEnabled
+                    && IsWorldMapActive()
+                    && (Input.touchCount >= 2
+                        || mode == TouchMode.TwoFinger
+                        || Time.frameCount - lastMultiTouchFrame <= 15);
+            }
         }
 
         public static void Update()
@@ -389,12 +418,31 @@ namespace RimTouch
                 if (!TouchModeEnabled)
                 {
                     ResetState();
+                    TouchTapRepair.Clear();
                     return;
                 }
 
                 int touchCount = Input.touchCount;
                 if (touchCount <= 0)
                 {
+                    if (hadTouchLastFrame)
+                    {
+                        touchDropoutFrames++;
+                        if (touchDropoutFrames <= TouchDropoutGraceFrames)
+                        {
+                            // A single (or occasionally two) consecutive frame(s) reporting zero
+                            // touches even though the finger never actually left the screen is a
+                            // known quirk of Windows/Unity legacy touch reporting, especially under
+                            // frame-rate dips. Treating that as a real lift used to tear down and
+                            // silently restart the whole gesture mid-drag at a random point - which
+                            // re-triggered the Pan/SelectionHold classification from scratch and
+                            // could misfire into a selection box for no visible reason. Ride out the
+                            // gap instead and keep the existing gesture state intact.
+                            UpdateInertia();
+                            return;
+                        }
+                    }
+
                     bool finalizedTouch = false;
                     if (hadTouchLastFrame)
                     {
@@ -408,6 +456,7 @@ namespace RimTouch
                         mousePositionWhenTouchEnded = Input.mousePosition;
                     }
                     hadTouchLastFrame = false;
+                    touchDropoutFrames = 0;
                     UpdateEdgeScrollSuppression();
                     ignoreTouchesUntilAllReleased = false;
                     if (mode != TouchMode.None)
@@ -430,9 +479,12 @@ namespace RimTouch
                     return;
                 }
 
+                touchDropoutFrames = 0;
+
                 if (!hadTouchLastFrame)
                 {
                     StopInertia();
+                    StopUiScrollInertia();
                     ClearInertiaSamples();
                 }
 
@@ -463,6 +515,7 @@ namespace RimTouch
             {
                 Log.Warning("[RimTouch] Touch update failed: " + ex);
                 ResetState();
+                TouchTapRepair.Clear();
             }
         }
 
@@ -487,6 +540,8 @@ namespace RimTouch
                 rightClickDone = false;
                 suppressReleaseTap = false;
                 panGestureDistance = 0f;
+                hasDetectedDragMovement = false;
+                dragMovementStartElapsed = 0f;
                 ClearInertiaSamples();
                 if (!startedOverUi)
                 {
@@ -523,7 +578,7 @@ namespace RimTouch
             {
                 if (IsEnded(touch) && moveDistance <= DragSlopPixels && !suppressReleaseTap)
                 {
-                    TouchTapRepair.QueueTap(gui);
+                    QueueUiTap(gui);
                 }
                 lastGui = gui;
                 if (IsEnded(touch))
@@ -543,7 +598,21 @@ namespace RimTouch
             {
                 SuppressVanillaMapInputFallout();
                 CancelRimWorldDragBox();
-                if (moveDistance > DragSlopPixels && elapsed < SelectHoldSeconds)
+
+                if (!hasDetectedDragMovement && moveDistance > MovementDetectionSlopPixels)
+                {
+                    // Latch the elapsed time the instant real movement is first noticed, using a
+                    // small threshold that real finger motion crosses almost immediately. Without
+                    // this, on a frame-rate dip the engine might only "see" the finger after it has
+                    // already moved past DragSlopPixels, by which point the live elapsed time has
+                    // drifted past SelectHoldSeconds purely because frames were sparse - causing a
+                    // normal fast scroll to be misclassified as a SelectionHold drag at random,
+                    // depending on frame timing ("works every other time").
+                    hasDetectedDragMovement = true;
+                    dragMovementStartElapsed = elapsed;
+                }
+
+                if (moveDistance > DragSlopPixels && hasDetectedDragMovement && dragMovementStartElapsed < SelectHoldSeconds)
                 {
                     mode = TouchMode.MapPan;
                     panAnchorMap = startMap;
@@ -560,7 +629,7 @@ namespace RimTouch
                     suppressReleaseTap = true;
                     CancelRimWorldDragBox();
                 }
-                else if (elapsed >= SelectHoldSeconds && moveDistance > RightClickHoldSlopPixels)
+                else if (moveDistance > RightClickHoldSlopPixels && hasDetectedDragMovement && dragMovementStartElapsed >= SelectHoldSeconds)
                 {
                     mode = TouchMode.SelectionHold;
                     suppressReleaseTap = true;
@@ -614,7 +683,7 @@ namespace RimTouch
                     mode = TouchMode.MapPan;
                     panGestureDistance = moveDistance;
                     lastWorldPanSampleTime = startTime;
-                    worldPanAnchorValid = TryGetWorldSpherePointAtGui(startGui, out worldPanAnchorPoint);
+                    worldPanAnchorValid = ShouldUseWorldAnchorPan() && TryGetWorldSpherePointAtGui(startGui, out worldPanAnchorPoint);
                     suppressReleaseTap = true;
                     SuppressUiClickFallout();
                     CancelWorldDragBox();
@@ -669,7 +738,7 @@ namespace RimTouch
                 twoFingerPanAnchorMap = IsWorldMapActive() ? Vector3.zero : (Find.CurrentMap != null ? GuiToMapPosition(mid) : Vector3.zero);
                 lastPanSampleTime = Time.realtimeSinceStartup;
                 lastWorldPanSampleTime = lastPanSampleTime;
-                worldPanAnchorValid = IsWorldMapActive() && TryGetWorldSpherePointAtGui(mid, out worldPanAnchorPoint);
+                worldPanAnchorValid = IsWorldMapActive() && ShouldUseWorldAnchorPan() && TryGetWorldSpherePointAtGui(mid, out worldPanAnchorPoint);
                 lastZoomSampleTime = lastPanSampleTime;
                 panGestureDistance = 0f;
                 ClearInertiaSamples();
@@ -721,6 +790,12 @@ namespace RimTouch
 
         private static void FinalizeTouchDisappearance()
         {
+            if (uiScrollGestureActive)
+            {
+                FinalizeUiScrollInertia();
+                return;
+            }
+
             if (mode == TouchMode.OneFinger)
             {
                 if (startedOverUi)
@@ -728,7 +803,7 @@ namespace RimTouch
                     float moveDistance = Vector2.Distance(lastGui, startGui);
                     if (moveDistance <= DragSlopPixels && !suppressReleaseTap)
                     {
-                        TouchTapRepair.QueueTap(lastGui);
+                        QueueUiTap(lastGui);
                     }
                 }
                 else
@@ -765,576 +840,6 @@ namespace RimTouch
             FinalizeInertiaFromGesture();
         }
 
-        private static Vector3 KeepMapPointUnderGui(Vector3 mapPoint, Vector2 gui)
-        {
-            CameraDriver cameraDriver = Find.CameraDriver;
-            if (cameraDriver == null || Find.CurrentMap == null)
-            {
-                return Vector3.zero;
-            }
-
-            float size = GetCameraRootSize(cameraDriver);
-            Vector3 currentMap = GuiToMapPosition(gui);
-            Vector3 delta = mapPoint - currentMap;
-            cameraDriver.SetRootPosAndSize(GetCameraRootPos(cameraDriver) + delta, size);
-            return delta;
-        }
-
-        private static void ApplyPinchZoom(float previousDistance, float currentDistance, Vector2 midpointGui)
-        {
-            if (previousDistance <= 1f || currentDistance <= 1f)
-            {
-                return;
-            }
-
-            CameraDriver cameraDriver = Find.CameraDriver;
-            if (cameraDriver == null)
-            {
-                return;
-            }
-
-            float currentSize = GetCameraRootSize(cameraDriver);
-            float zoomRatio = previousDistance / currentDistance;
-            float targetSize = Mathf.Clamp(currentSize * zoomRatio, GetMinZoomSize(cameraDriver), GetMaxZoomSize(cameraDriver));
-            Vector3 before = GuiToMapPosition(midpointGui);
-            cameraDriver.SetRootPosAndSize(GetCameraRootPos(cameraDriver), targetSize);
-            Vector3 after = GuiToMapPosition(midpointGui);
-            cameraDriver.SetRootPosAndSize(GetCameraRootPos(cameraDriver) + (before - after), targetSize);
-            zoomInertiaGui = midpointGui;
-            zoomInertiaAnchorValid = true;
-            SampleZoomVelocity(currentSize, targetSize);
-        }
-
-        private static void ApplyWorldPinchZoom(float previousDistance, float currentDistance)
-        {
-            if (previousDistance <= 1f || currentDistance <= 1f || WorldCameraAltitudeField == null || WorldCameraDesiredAltitudeField == null)
-            {
-                return;
-            }
-
-            WorldCameraDriver driver = Find.WorldCameraDriver;
-            if (driver == null)
-            {
-                return;
-            }
-
-            float currentAltitude = (float)WorldCameraAltitudeField.GetValue(driver);
-            float zoomRatio = previousDistance / currentDistance;
-            float maxAltitude = WorldCameraMaxAltitudeField != null ? (float)WorldCameraMaxAltitudeField.GetValue(driver) : 75f;
-            float targetAltitude = Mathf.Clamp(currentAltitude * zoomRatio, WorldCameraDriver.MinAltitude, maxAltitude);
-            WorldCameraAltitudeField.SetValue(driver, targetAltitude);
-            WorldCameraDesiredAltitudeField.SetValue(driver, targetAltitude);
-            zoomInertiaAnchorValid = false;
-            SampleZoomVelocity(currentAltitude, targetAltitude);
-            if (WorldCameraMouseBottomEdgeStartField != null)
-            {
-                WorldCameraMouseBottomEdgeStartField.SetValue(driver, 0f);
-            }
-        }
-
-        private static void SamplePanVelocityFromMapDelta(Vector3 mapDelta)
-        {
-            float now = Time.realtimeSinceStartup;
-            float dt = now - lastPanSampleTime;
-            lastPanSampleTime = now;
-
-            if (dt <= 0.0001f || dt > 0.18f)
-            {
-                return;
-            }
-
-            Vector3 velocity = mapDelta / dt;
-            velocity.y = 0f;
-            if (!IsFinite(velocity))
-            {
-                return;
-            }
-
-            if (velocity.magnitude > MaxPanInertiaSpeed)
-            {
-                velocity = velocity.normalized * MaxPanInertiaSpeed;
-            }
-
-            RecordPanVelocitySample(velocity, now);
-            panVelocity = GetRecentPanVelocity(now);
-        }
-
-        private static void SampleZoomVelocity(float previousValue, float currentValue)
-        {
-            float now = Time.realtimeSinceStartup;
-            float dt = now - lastZoomSampleTime;
-            lastZoomSampleTime = now;
-
-            if (dt <= 0.0001f || dt > 0.18f || previousValue <= 0f || currentValue <= 0f)
-            {
-                return;
-            }
-
-            float velocity = Mathf.Log(currentValue / previousValue) / dt;
-            if (float.IsNaN(velocity) || float.IsInfinity(velocity))
-            {
-                return;
-            }
-
-            velocity = Mathf.Clamp(velocity, -MaxZoomInertiaSpeed, MaxZoomInertiaSpeed);
-            RecordZoomVelocitySample(velocity, now);
-            zoomVelocity = GetRecentZoomVelocity(now);
-        }
-
-        private static void UpdateInertia()
-        {
-            if (Current.ProgramState != ProgramState.Playing)
-            {
-                StopInertia();
-                return;
-            }
-
-            float now = Time.realtimeSinceStartup;
-            float dt = Mathf.Clamp(now - lastUpdateTime, 0.001f, 0.05f);
-            lastUpdateTime = now;
-
-            if (IsWorldMapActive())
-            {
-                UpdateWorldInertia(dt);
-                return;
-            }
-
-            if (Find.CurrentMap != null)
-            {
-                UpdateMapInertia(dt);
-                return;
-            }
-
-            StopInertia();
-        }
-
-        private static void UpdateMapInertia(float dt)
-        {
-            CameraDriver cameraDriver = Find.CameraDriver;
-            if (cameraDriver == null)
-            {
-                StopInertia();
-                return;
-            }
-
-            worldPanVelocity = Vector2.zero;
-            Vector3 rootPos = GetCameraRootPos(cameraDriver);
-            float size = GetCameraRootSize(cameraDriver);
-            bool changed = false;
-
-            if (panVelocity.sqrMagnitude > MinPanInertiaSpeed * MinPanInertiaSpeed && PanInertiaStrength > 0f)
-            {
-                rootPos += panVelocity * PanInertiaStrength * dt;
-                panVelocity *= Mathf.Exp(-PanInertiaDamping * dt);
-                changed = true;
-            }
-            else
-            {
-                panVelocity = Vector3.zero;
-            }
-
-            if (Mathf.Abs(zoomVelocity) > MinZoomInertiaSpeed && ZoomInertiaStrength > 0f)
-            {
-                float targetSize = Mathf.Clamp(size * Mathf.Exp(zoomVelocity * ZoomInertiaStrength * dt), GetMinZoomSize(cameraDriver), GetMaxZoomSize(cameraDriver));
-                if (Mathf.Abs(targetSize - size) > 0.001f)
-                {
-                    if (zoomInertiaAnchorValid)
-                    {
-                        cameraDriver.SetRootPosAndSize(rootPos, size);
-                        Vector3 before = GuiToMapPosition(zoomInertiaGui);
-                        cameraDriver.SetRootPosAndSize(rootPos, targetSize);
-                        Vector3 after = GuiToMapPosition(zoomInertiaGui);
-                        rootPos = GetCameraRootPos(cameraDriver) + (before - after);
-                    }
-                    size = targetSize;
-                    zoomVelocity *= Mathf.Exp(ZoomInertiaDamping * -dt);
-                    changed = true;
-                }
-                else
-                {
-                    zoomVelocity = 0f;
-                    zoomInertiaAnchorValid = false;
-                }
-            }
-            else
-            {
-                zoomVelocity = 0f;
-                zoomInertiaAnchorValid = false;
-            }
-
-            if (changed)
-            {
-                cameraDriver.SetRootPosAndSize(rootPos, size);
-            }
-        }
-
-        private static void UpdateWorldInertia(float dt)
-        {
-            WorldCameraDriver driver = Find.WorldCameraDriver;
-            if (driver == null)
-            {
-                StopInertia();
-                return;
-            }
-
-            panVelocity = Vector3.zero;
-
-            float worldPanStopSpeed = GetWorldPanInertiaStopSpeed(driver);
-            if (worldPanVelocity.sqrMagnitude > worldPanStopSpeed * worldPanStopSpeed && PanInertiaStrength > 0f)
-            {
-                if (ShouldDisableWorldPanInertia(driver))
-                {
-                    worldPanVelocity = Vector2.zero;
-                    worldInertiaAnchorValid = false;
-                }
-                else
-                {
-                    worldInertiaGui += worldPanVelocity * PanInertiaStrength * WorldPanInertiaStrengthScale * GetWorldPanInertiaMoveScale(driver) * dt;
-                    if (!KeepWorldPointUnderGui(driver, worldInertiaAnchorPoint, worldInertiaGui))
-                    {
-                        worldPanVelocity = Vector2.zero;
-                        worldInertiaAnchorValid = false;
-                    }
-                    else
-                    {
-                        worldPanVelocity *= Mathf.Exp(-GetWorldPanInertiaDamping(driver) * dt);
-                        if (worldPanVelocity.sqrMagnitude <= worldPanStopSpeed * worldPanStopSpeed)
-                        {
-                            worldPanVelocity = Vector2.zero;
-                            worldInertiaAnchorValid = false;
-                        }
-                    }
-                }
-            }
-            else
-            {
-                worldPanVelocity = Vector2.zero;
-                worldInertiaAnchorValid = false;
-            }
-
-            if (Mathf.Abs(zoomVelocity) > MinZoomInertiaSpeed && ZoomInertiaStrength > 0f && WorldCameraAltitudeField != null && WorldCameraDesiredAltitudeField != null)
-            {
-                float currentAltitude = (float)WorldCameraAltitudeField.GetValue(driver);
-                float maxAltitude = WorldCameraMaxAltitudeField != null ? (float)WorldCameraMaxAltitudeField.GetValue(driver) : 75f;
-                float targetAltitude = Mathf.Clamp(currentAltitude * Mathf.Exp(zoomVelocity * ZoomInertiaStrength * dt), WorldCameraDriver.MinAltitude, maxAltitude);
-                if (Mathf.Abs(targetAltitude - currentAltitude) > 0.001f)
-                {
-                    WorldCameraAltitudeField.SetValue(driver, targetAltitude);
-                    WorldCameraDesiredAltitudeField.SetValue(driver, targetAltitude);
-                    zoomVelocity *= Mathf.Exp(ZoomInertiaDamping * -dt);
-                }
-                else
-                {
-                    zoomVelocity = 0f;
-                }
-            }
-            else
-            {
-                zoomVelocity = 0f;
-            }
-        }
-
-        private static void FinalizeInertiaFromGesture()
-        {
-            if (mode == TouchMode.MapPan || mode == TouchMode.TwoFinger)
-            {
-                float now = Time.realtimeSinceStartup;
-                zoomVelocity = GetRecentZoomVelocity(now);
-
-                if (IsWorldMapActive())
-                {
-                    panVelocity = Vector3.zero;
-                    worldPanVelocity = GetRecentWorldPanVelocity(now);
-
-                    WorldCameraDriver worldDriver = Find.WorldCameraDriver;
-                    if (panGestureDistance < DragSlopPixels * 1.25f
-                        || worldPanVelocity.magnitude < GetWorldPanInertiaStartSpeed(worldDriver)
-                        || ShouldDisableWorldPanInertia(worldDriver))
-                    {
-                        worldPanVelocity = Vector2.zero;
-                        worldInertiaAnchorValid = false;
-                    }
-                }
-                else
-                {
-                    worldPanVelocity = Vector2.zero;
-                    panVelocity = GetRecentPanVelocity(now);
-
-                    if (panGestureDistance < DragSlopPixels * 1.25f || panVelocity.magnitude < MinPanInertiaStartSpeed)
-                    {
-                        panVelocity = Vector3.zero;
-                    }
-                }
-
-                if (Mathf.Abs(zoomVelocity) < MinZoomInertiaStartSpeed)
-                {
-                    zoomVelocity = 0f;
-                    zoomInertiaAnchorValid = false;
-                }
-            }
-            else
-            {
-                StopInertia();
-            }
-        }
-
-        private static void StopInertia()
-        {
-            panVelocity = Vector3.zero;
-            worldPanVelocity = Vector2.zero;
-            pendingWorldCameraDolly = Vector2.zero;
-            worldInertiaAnchorValid = false;
-            worldInertiaAnchorPoint = Vector3.zero;
-            worldInertiaGui = Vector2.zero;
-            zoomInertiaGui = Vector2.zero;
-            zoomInertiaAnchorValid = false;
-            zoomVelocity = 0f;
-        }
-
-        private static void ClearInertiaSamples()
-        {
-            ClearPanVelocitySamples();
-            ClearWorldPanVelocitySamples();
-            ClearZoomVelocitySamples();
-        }
-
-        private static void ClearPanVelocitySamples()
-        {
-            panVelocitySampleIndex = 0;
-            panVelocitySampleCount = 0;
-            for (int i = 0; i < PanVelocitySamples.Length; i++)
-            {
-                PanVelocitySamples[i] = Vector3.zero;
-                PanVelocitySampleTimes[i] = 0f;
-            }
-        }
-
-        private static void ClearZoomVelocitySamples()
-        {
-            zoomVelocitySampleIndex = 0;
-            zoomVelocitySampleCount = 0;
-            for (int i = 0; i < ZoomVelocitySamples.Length; i++)
-            {
-                ZoomVelocitySamples[i] = 0f;
-                ZoomVelocitySampleTimes[i] = 0f;
-            }
-        }
-
-        private static void RecordPanVelocitySample(Vector3 velocity, float time)
-        {
-            PanVelocitySamples[panVelocitySampleIndex] = velocity;
-            PanVelocitySampleTimes[panVelocitySampleIndex] = time;
-            panVelocitySampleIndex = (panVelocitySampleIndex + 1) % PanVelocitySamples.Length;
-            panVelocitySampleCount = Mathf.Min(panVelocitySampleCount + 1, PanVelocitySamples.Length);
-        }
-
-        private static Vector3 GetRecentPanVelocity(float now)
-        {
-            if (panVelocitySampleCount <= 0)
-            {
-                return panVelocity;
-            }
-
-            Vector3 sum = Vector3.zero;
-            float totalWeight = 0f;
-            for (int i = 0; i < panVelocitySampleCount; i++)
-            {
-                int index = (panVelocitySampleIndex - 1 - i + PanVelocitySamples.Length) % PanVelocitySamples.Length;
-                float age = now - PanVelocitySampleTimes[index];
-                if (age < 0f || age > PanVelocityHistorySeconds)
-                {
-                    continue;
-                }
-
-                float recencyWeight = Mathf.Clamp01(1f - age / PanVelocityHistorySeconds);
-                float orderWeight = 1f / (1f + i * 0.35f);
-                float weight = Mathf.Max(0.05f, recencyWeight) * orderWeight;
-                sum += PanVelocitySamples[index] * weight;
-                totalWeight += weight;
-            }
-
-            if (totalWeight <= 0f)
-            {
-                return Vector3.zero;
-            }
-            return sum / totalWeight;
-        }
-
-        private static void ClearWorldPanVelocitySamples()
-        {
-            worldPanVelocitySampleIndex = 0;
-            worldPanVelocitySampleCount = 0;
-            for (int i = 0; i < WorldPanVelocitySamples.Length; i++)
-            {
-                WorldPanVelocitySamples[i] = Vector2.zero;
-                WorldPanVelocitySampleTimes[i] = 0f;
-            }
-        }
-
-        private static void SampleWorldPanVelocity(Vector2 guiDelta)
-        {
-            float now = Time.realtimeSinceStartup;
-            float dt = now - lastWorldPanSampleTime;
-            lastWorldPanSampleTime = now;
-
-            if (dt <= 0.0001f || dt > 0.18f || guiDelta == Vector2.zero)
-            {
-                return;
-            }
-
-            Vector2 velocity = guiDelta / dt;
-            if (!IsFinite(velocity))
-            {
-                return;
-            }
-
-            if (velocity.magnitude > MaxWorldPanInertiaSpeed)
-            {
-                velocity = velocity.normalized * MaxWorldPanInertiaSpeed;
-            }
-
-            RecordWorldPanVelocitySample(velocity, now);
-            worldPanVelocity = GetRecentWorldPanVelocity(now);
-        }
-
-        private static void RecordWorldPanVelocitySample(Vector2 velocity, float time)
-        {
-            WorldPanVelocitySamples[worldPanVelocitySampleIndex] = velocity;
-            WorldPanVelocitySampleTimes[worldPanVelocitySampleIndex] = time;
-            worldPanVelocitySampleIndex = (worldPanVelocitySampleIndex + 1) % WorldPanVelocitySamples.Length;
-            worldPanVelocitySampleCount = Mathf.Min(worldPanVelocitySampleCount + 1, WorldPanVelocitySamples.Length);
-        }
-
-        private static Vector2 GetRecentWorldPanVelocity(float now)
-        {
-            if (worldPanVelocitySampleCount <= 0)
-            {
-                return worldPanVelocity;
-            }
-
-            Vector2 sum = Vector2.zero;
-            float totalWeight = 0f;
-            for (int i = 0; i < worldPanVelocitySampleCount; i++)
-            {
-                int index = (worldPanVelocitySampleIndex - 1 - i + WorldPanVelocitySamples.Length) % WorldPanVelocitySamples.Length;
-                float age = now - WorldPanVelocitySampleTimes[index];
-                if (age < 0f || age > WorldPanVelocityHistorySeconds)
-                {
-                    continue;
-                }
-
-                float recencyWeight = Mathf.Clamp01(1f - age / WorldPanVelocityHistorySeconds);
-                float orderWeight = 1f / (1f + i * 0.35f);
-                float weight = Mathf.Max(0.05f, recencyWeight) * orderWeight;
-                sum += WorldPanVelocitySamples[index] * weight;
-                totalWeight += weight;
-            }
-
-            if (totalWeight <= 0f)
-            {
-                return Vector2.zero;
-            }
-            return sum / totalWeight;
-        }
-
-        private static void RecordZoomVelocitySample(float velocity, float time)
-        {
-            ZoomVelocitySamples[zoomVelocitySampleIndex] = velocity;
-            ZoomVelocitySampleTimes[zoomVelocitySampleIndex] = time;
-            zoomVelocitySampleIndex = (zoomVelocitySampleIndex + 1) % ZoomVelocitySamples.Length;
-            zoomVelocitySampleCount = Mathf.Min(zoomVelocitySampleCount + 1, ZoomVelocitySamples.Length);
-        }
-
-        private static float GetRecentZoomVelocity(float now)
-        {
-            if (zoomVelocitySampleCount <= 0)
-            {
-                return zoomVelocity;
-            }
-
-            float sum = 0f;
-            float totalWeight = 0f;
-            for (int i = 0; i < zoomVelocitySampleCount; i++)
-            {
-                int index = (zoomVelocitySampleIndex - 1 - i + ZoomVelocitySamples.Length) % ZoomVelocitySamples.Length;
-                float age = now - ZoomVelocitySampleTimes[index];
-                if (age < 0f || age > ZoomVelocityHistorySeconds)
-                {
-                    continue;
-                }
-
-                float recencyWeight = Mathf.Clamp01(1f - age / ZoomVelocityHistorySeconds);
-                float orderWeight = 1f / (1f + i * 0.35f);
-                float weight = Mathf.Max(0.05f, recencyWeight) * orderWeight;
-                sum += ZoomVelocitySamples[index] * weight;
-                totalWeight += weight;
-            }
-
-            if (totalWeight <= 0f)
-            {
-                return 0f;
-            }
-            return sum / totalWeight;
-        }
-
-        private static bool IsFinite(Vector3 vector)
-        {
-            return !float.IsNaN(vector.x) && !float.IsInfinity(vector.x)
-                && !float.IsNaN(vector.y) && !float.IsInfinity(vector.y)
-                && !float.IsNaN(vector.z) && !float.IsInfinity(vector.z);
-        }
-
-        private static bool IsFinite(Vector2 vector)
-        {
-            return !float.IsNaN(vector.x) && !float.IsInfinity(vector.x)
-                && !float.IsNaN(vector.y) && !float.IsInfinity(vector.y);
-        }
-
-        private static float PanInertiaStrength
-        {
-            get
-            {
-                return RimTouchMod.Settings != null ? RimTouchMod.Settings.panInertiaStrength : DefaultPanInertiaStrength;
-            }
-        }
-
-        private static float PanInertiaDamping
-        {
-            get
-            {
-                return RimTouchMod.Settings != null ? Mathf.Max(0.1f, RimTouchMod.Settings.panInertiaDamping) : DefaultPanInertiaDamping;
-            }
-        }
-
-        private static float ZoomInertiaStrength
-        {
-            get
-            {
-                return RimTouchMod.Settings != null ? RimTouchMod.Settings.zoomInertiaStrength : DefaultZoomInertiaStrength;
-            }
-        }
-
-        private static float ZoomInertiaDamping
-        {
-            get
-            {
-                return RimTouchMod.Settings != null ? Mathf.Max(0.1f, RimTouchMod.Settings.zoomInertiaDamping) : DefaultZoomInertiaDamping;
-            }
-        }
-
-        public static void SuppressCameraEdgeScrollState(CameraDriver cameraDriver)
-        {
-            if (cameraDriver == null)
-            {
-                return;
-            }
-
-            CameraDesiredDollyField.SetValue(cameraDriver, Vector2.zero);
-            CameraDesiredDollyRawField.SetValue(cameraDriver, Vector2.zero);
-            CameraVelocityField.SetValue(cameraDriver, Vector3.zero);
-            CameraMouseBottomEdgeStartField.SetValue(cameraDriver, 0f);
-        }
-
         private static void UpdateEdgeScrollSuppression()
         {
             if (!suppressEdgeScrollUntilMouseMoves)
@@ -1347,6 +852,47 @@ namespace RimTouch
                 suppressEdgeScrollUntilMouseMoves = false;
                 suppressVanillaMapUntilMouseMoves = false;
             }
+        }
+
+        private static void QueueUiTap(Vector2 gui)
+        {
+            int clickCount = TouchTapRepair.QueueTap(gui);
+            if (clickCount < 2 || !TryJumpToColonistBarTouchDoubleTap(gui))
+            {
+                return;
+            }
+
+            suppressReleaseTap = true;
+            TouchTapRepair.Clear(false);
+            SuppressUiClickFallout();
+        }
+
+        private static bool TryJumpToColonistBarTouchDoubleTap(Vector2 gui)
+        {
+            ColonistBar colonistBar = Find.ColonistBar;
+            if (colonistBar == null)
+            {
+                return false;
+            }
+
+            Thing thing = colonistBar.ColonistOrCorpseAt(gui);
+            Pawn pawn = thing as Pawn;
+            if (pawn == null)
+            {
+                Corpse corpse = thing as Corpse;
+                if (corpse != null)
+                {
+                    pawn = corpse.InnerPawn;
+                }
+            }
+
+            if (pawn == null)
+            {
+                return false;
+            }
+
+            CameraJumper.TryJumpAndSelect(new GlobalTargetInfo(pawn), CameraJumper.MovementMode.Pan);
+            return true;
         }
 
         private static void DoMapLeftClick(Vector2 gui)
@@ -1520,437 +1066,6 @@ namespace RimTouch
             return true;
         }
 
-        private static bool IsWorldMapActive()
-        {
-            if (Current.ProgramState != ProgramState.Playing || Find.WorldCameraDriver == null)
-            {
-                return false;
-            }
-
-            try
-            {
-                if (Find.WorldSelector == null)
-                {
-                    return false;
-                }
-            }
-            catch
-            {
-                return false;
-            }
-
-            bool renderedNow;
-            if (TryGetWorldRenderedNow(out renderedNow))
-            {
-                return renderedNow;
-            }
-
-            if (Find.World != null && Find.World.renderer != null)
-            {
-                object renderer = Find.World.renderer;
-                object wantedMode = GetMemberValue(renderer, "wantedMode");
-                if (wantedMode != null && wantedMode.ToString() != "None")
-                {
-                    return true;
-                }
-            }
-
-            return Find.CurrentMap == null;
-        }
-
-        private static bool TryGetWorldRenderedNow(out bool renderedNow)
-        {
-            renderedNow = false;
-
-            try
-            {
-                object value = null;
-
-                if (WorldRenderedNowProperty != null)
-                {
-                    value = WorldRenderedNowProperty.GetValue(null, null);
-                }
-                else if (WorldRenderedNowGetter != null)
-                {
-                    value = WorldRenderedNowGetter.Invoke(null, null);
-                }
-                else if (WorldRenderedNowField != null)
-                {
-                    value = WorldRenderedNowField.GetValue(null);
-                }
-
-                if (value is bool)
-                {
-                    renderedNow = (bool)value;
-                    return true;
-                }
-            }
-            catch
-            {
-                renderedNow = false;
-            }
-
-            return false;
-        }
-
-        private static object GetMemberValue(object instance, string memberName)
-        {
-            if (instance == null)
-            {
-                return null;
-            }
-
-            Type type = instance.GetType();
-            FieldInfo field = AccessTools.Field(type, memberName);
-            if (field != null)
-            {
-                return field.GetValue(instance);
-            }
-
-            PropertyInfo property = AccessTools.Property(type, memberName);
-            if (property != null)
-            {
-                return property.GetValue(instance, null);
-            }
-
-            return null;
-        }
-
-        private static Vector2 PanWorldByGuiDelta(Vector2 previousGui, Vector2 currentGui)
-        {
-            WorldCameraDriver driver = Find.WorldCameraDriver;
-            if (driver == null || WorldCameraDesiredRotationRawField == null)
-            {
-                return Vector2.zero;
-            }
-
-            Vector2 guiDelta = currentGui - previousGui;
-            if (worldPanAnchorValid)
-            {
-                if (KeepWorldPointUnderGui(driver, worldPanAnchorPoint, currentGui))
-                {
-                    worldInertiaAnchorValid = true;
-                    worldInertiaAnchorPoint = worldPanAnchorPoint;
-                    worldInertiaGui = currentGui;
-                }
-                else
-                {
-                    worldInertiaAnchorValid = false;
-                }
-                return guiDelta;
-            }
-
-            Vector2 rotationDelta = GetWorldRotationDeltaFromGuiDelta(driver, previousGui, currentGui);
-            ApplyWorldCameraDolly(driver, rotationDelta);
-            worldInertiaAnchorValid = false;
-            return guiDelta;
-        }
-
-        private static Vector2 GetWorldRotationDeltaFromGuiDelta(WorldCameraDriver driver, Vector2 previousGui, Vector2 currentGui)
-        {
-            Vector2 delta = currentGui - previousGui;
-            float altitudeFactor = Mathf.Lerp(0.4f, 1.4f, Mathf.Clamp01(driver.AltitudePercent));
-            return new Vector2(delta.x, -delta.y) * WorldPanPixelsToRotation * altitudeFactor;
-        }
-
-        private static bool KeepWorldPointUnderGui(WorldCameraDriver driver, Vector3 anchorPoint, Vector2 gui)
-        {
-            if (driver == null || WorldCameraSphereRotationField == null)
-            {
-                return false;
-            }
-
-            Vector3 currentPoint;
-            if (!TryGetWorldSpherePointAtGui(gui, out currentPoint))
-            {
-                return false;
-            }
-
-            Vector3 center = GetWorldSphereCenter(driver);
-            Vector3 anchorDir = anchorPoint - center;
-            Vector3 currentDir = currentPoint - center;
-            if (anchorDir.sqrMagnitude <= 0.0001f || currentDir.sqrMagnitude <= 0.0001f)
-            {
-                return false;
-            }
-
-            Vector3 anchorNormal = anchorDir.normalized;
-            Vector3 currentNormal = currentDir.normalized;
-            float poleFactor = Mathf.Max(Mathf.Abs(anchorNormal.y), Mathf.Abs(currentNormal.y), GetWorldPoleFactor(driver));
-
-            Quaternion sphereRotation = (Quaternion)WorldCameraSphereRotationField.GetValue(driver);
-            Quaternion deltaRotation = Quaternion.FromToRotation(anchorNormal, currentNormal);
-            float rotationAngle = Quaternion.Angle(Quaternion.identity, deltaRotation);
-            if (float.IsNaN(rotationAngle) || float.IsInfinity(rotationAngle))
-            {
-                return false;
-            }
-            if (rotationAngle > MaxWorldAnchorRotationDegrees)
-            {
-                deltaRotation = Quaternion.Slerp(Quaternion.identity, deltaRotation, MaxWorldAnchorRotationDegrees / rotationAngle);
-            }
-
-            float poleDamping = Mathf.InverseLerp(WorldAnchorPoleDampingStart, 1f, poleFactor);
-            if (poleDamping > 0f)
-            {
-                deltaRotation = Quaternion.Slerp(Quaternion.identity, deltaRotation, Mathf.Lerp(1f, WorldAnchorPoleMinimumScale, poleDamping));
-            }
-
-            WorldCameraSphereRotationField.SetValue(driver, sphereRotation * deltaRotation);
-            SuppressWorldCameraEdgeScrollState(driver);
-            if (WorldCameraApplyPositionMethod != null)
-            {
-                WorldCameraApplyPositionMethod.Invoke(driver, null);
-            }
-            return true;
-        }
-
-        private static bool TryGetWorldSpherePointAtGui(Vector2 gui, out Vector3 point)
-        {
-            point = Vector3.zero;
-            WorldCameraDriver driver = Find.WorldCameraDriver;
-            Camera camera = GetWorldCamera(driver);
-            if (driver == null || camera == null)
-            {
-                return false;
-            }
-
-            Vector3 screenPoint = GuiToScreenPoint(gui);
-            Ray ray = camera.ScreenPointToRay(screenPoint);
-            Vector3 center = GetWorldSphereCenter(driver);
-            float radius = GetWorldSphereRadius(driver);
-            Vector3 originToCenter = ray.origin - center;
-            float b = Vector3.Dot(originToCenter, ray.direction);
-            float c = originToCenter.sqrMagnitude - radius * radius;
-            float discriminant = b * b - c;
-            if (discriminant < 0f)
-            {
-                return false;
-            }
-
-            float root = Mathf.Sqrt(discriminant);
-            float distance = -b - root;
-            if (distance < 0f)
-            {
-                distance = -b + root;
-            }
-            if (distance < 0f)
-            {
-                return false;
-            }
-
-            point = ray.origin + ray.direction * distance;
-            return IsFinite(point);
-        }
-
-        private static Vector3 GetWorldSphereCenter(WorldCameraDriver driver)
-        {
-            if (driver != null && WorldCameraLayerOriginOffsetField != null)
-            {
-                object value = WorldCameraLayerOriginOffsetField.GetValue(driver);
-                if (value is Vector3)
-                {
-                    return (Vector3)value;
-                }
-            }
-            return Vector3.zero;
-        }
-
-        private static float GetWorldSphereRadius(WorldCameraDriver driver)
-        {
-            if (WorldCameraSphereRadiusField != null)
-            {
-                object value = WorldCameraSphereRadiusField.GetValue(WorldCameraSphereRadiusField.IsStatic ? null : driver);
-                if (value is float && (float)value > 0f)
-                {
-                    return (float)value;
-                }
-            }
-            return 100f;
-        }
-
-        private static float GetWorldPoleFactor(WorldCameraDriver driver)
-        {
-            if (driver == null || WorldCameraSphereRotationField == null)
-            {
-                return 0f;
-            }
-
-            Quaternion sphereRotation = (Quaternion)WorldCameraSphereRotationField.GetValue(driver);
-            Vector3 lookPoint = -(Quaternion.Inverse(sphereRotation) * Vector3.forward);
-            if (!IsFinite(lookPoint) || lookPoint.sqrMagnitude <= 0.0001f)
-            {
-                return 0f;
-            }
-            return Mathf.Abs(lookPoint.normalized.y);
-        }
-
-        private static bool ShouldDisableWorldPanInertia(WorldCameraDriver driver)
-        {
-            return driver == null || !worldInertiaAnchorValid || GetWorldPoleFactor(driver) >= WorldPoleInertiaDisable;
-        }
-
-        private static float GetWorldCloseZoomFactor(WorldCameraDriver driver)
-        {
-            if (driver == null)
-            {
-                return 0f;
-            }
-            return 1f - Mathf.Clamp01(driver.AltitudePercent);
-        }
-
-        private static float GetWorldPanInertiaStartSpeed(WorldCameraDriver driver)
-        {
-            return Mathf.Lerp(MinWorldPanInertiaStartSpeed, WorldCloseZoomInertiaStartSpeed, GetWorldCloseZoomFactor(driver));
-        }
-
-        private static float GetWorldPanInertiaStopSpeed(WorldCameraDriver driver)
-        {
-            return Mathf.Lerp(MinWorldPanInertiaSpeed, WorldCloseZoomInertiaStopSpeed, GetWorldCloseZoomFactor(driver));
-        }
-
-        private static float GetWorldPanInertiaDamping(WorldCameraDriver driver)
-        {
-            return PanInertiaDamping * Mathf.Lerp(1f, WorldCloseZoomInertiaDampingScale, GetWorldCloseZoomFactor(driver));
-        }
-
-        private static float GetWorldPanInertiaMoveScale(WorldCameraDriver driver)
-        {
-            return Mathf.Lerp(1f, WorldCloseZoomInertiaMoveScale, GetWorldCloseZoomFactor(driver));
-        }
-
-        private static Camera GetWorldCamera(WorldCameraDriver driver)
-        {
-            if (driver == null || WorldCameraCachedCameraField == null)
-            {
-                return null;
-            }
-            return WorldCameraCachedCameraField.GetValue(driver) as Camera;
-        }
-
-        private static void ApplyWorldCameraDolly(WorldCameraDriver driver, Vector2 dolly)
-        {
-            if (float.IsNaN(dolly.x) || float.IsInfinity(dolly.x) || float.IsNaN(dolly.y) || float.IsInfinity(dolly.y))
-            {
-                return;
-            }
-
-            if (driver == null || WorldCameraDesiredRotationRawField == null)
-            {
-                return;
-            }
-
-            Vector2 current = (Vector2)WorldCameraDesiredRotationRawField.GetValue(driver);
-            if (!IsFinite(current))
-            {
-                current = Vector2.zero;
-            }
-            WorldCameraDesiredRotationRawField.SetValue(driver, current + dolly);
-        }
-
-        public static Vector2 ModifyWorldCameraInput(WorldCameraDriver driver, Vector2 vanillaInput)
-        {
-            if (driver == null || !TouchModeEnabled || !IsWorldMapActive())
-            {
-                pendingWorldCameraDolly = Vector2.zero;
-                return vanillaInput;
-            }
-
-            Vector2 touchInput = pendingWorldCameraDolly;
-            pendingWorldCameraDolly = Vector2.zero;
-
-            if (touchInput.sqrMagnitude > 0.000001f || ShouldSuppressWorldEdgeScroll)
-            {
-                SuppressWorldCameraEdgeScrollState(driver);
-                return touchInput;
-            }
-
-            return vanillaInput;
-        }
-
-        public static void SuppressWorldCameraEdgeScrollState(WorldCameraDriver driver)
-        {
-            if (driver == null)
-            {
-                return;
-            }
-
-            if (WorldCameraRotationVelocityField != null)
-            {
-                WorldCameraRotationVelocityField.SetValue(driver, Vector2.zero);
-            }
-            if (WorldCameraMouseBottomEdgeStartField != null)
-            {
-                WorldCameraMouseBottomEdgeStartField.SetValue(driver, 0f);
-            }
-        }
-
-        private static void DoWorldLeftClick(Vector2 gui)
-        {
-            WorldSelector selector = Find.WorldSelector;
-            if (selector == null)
-            {
-                return;
-            }
-
-            PlanetTile tile;
-            if (TryGetWorldTileAtGui(gui, out tile))
-            {
-                selector.SelectFirstOrNextAt(tile);
-                return;
-            }
-
-            List<WorldObject> objects = GenWorldUI.WorldObjectsUnderMouse(gui);
-            if (objects != null && objects.Count > 0)
-            {
-                selector.ClearSelection();
-                selector.Select(objects[0], true);
-                return;
-            }
-
-            selector.ClearSelection();
-        }
-
-        private static bool TryGetWorldTileAtGui(Vector2 gui, out PlanetTile tile)
-        {
-            tile = PlanetTile.Invalid;
-
-            if (Find.World == null || Find.World.renderer == null)
-            {
-                return false;
-            }
-
-            WorldCameraDriver driver = Find.WorldCameraDriver;
-            Camera camera = GetWorldCamera(driver);
-            if (camera == null)
-            {
-                return false;
-            }
-
-            try
-            {
-                Ray ray = camera.ScreenPointToRay(GuiToScreenPoint(gui));
-                RaycastHit hit;
-                bool hitWorld = Physics.Raycast(ray, out hit, WorldCameraManager.FarClipPlane, WorldCameraManager.WorldLayerMask);
-                if (!hitWorld)
-                {
-                    hitWorld = Physics.Raycast(ray, out hit, WorldCameraManager.FarClipPlane);
-                }
-                if (!hitWorld)
-                {
-                    return false;
-                }
-
-                tile = Find.World.renderer.GetTileFromRayHit(hit);
-                return tile.Valid;
-            }
-            catch
-            {
-                tile = PlanetTile.Invalid;
-                return false;
-            }
-        }
-
         private static void DoMapRightClick(Vector2 gui)
         {
             Map map = Find.CurrentMap;
@@ -1986,7 +1101,11 @@ namespace RimTouch
             FloatMenuOption autoTake = null;
             if (FloatMenuMakerMapGetAutoTakeOptionMethod != null)
             {
-                autoTake = (FloatMenuOption)FloatMenuMakerMapGetAutoTakeOptionMethod.Invoke(null, new object[] { options });
+                object autoTakeValue;
+                if (ReflectionGuard.TryInvoke(FloatMenuMakerMapGetAutoTakeOptionMethod, null, new object[] { options }, out autoTakeValue))
+                {
+                    autoTake = autoTakeValue as FloatMenuOption;
+                }
             }
 
             if (autoTake == null || autoTake.Disabled || FloatMenuOptionActionField == null)
@@ -1995,7 +1114,13 @@ namespace RimTouch
                 return true;
             }
 
-            Action action = (Action)FloatMenuOptionActionField.GetValue(autoTake);
+            Action action;
+            if (!ReflectionGuard.TryGetField(FloatMenuOptionActionField, autoTake, out action))
+            {
+                Find.WindowStack.Add(new FloatMenu(options));
+                return true;
+            }
+
             if (action == null)
             {
                 Find.WindowStack.Add(new FloatMenu(options));
@@ -2067,154 +1192,6 @@ namespace RimTouch
                 && twoFingerMaxDistanceChange <= TwoFingerCancelDistanceSlopPixels;
         }
 
-        private static bool IsLikelyUiPosition(Vector2 gui)
-        {
-            WindowStack stack = Find.WindowStack;
-            if (stack != null && stack.GetWindowAt(gui) != null)
-            {
-                return true;
-            }
-
-            float width = UI.screenWidth;
-            float height = UI.screenHeight;
-            if (gui.y > height - 190f)
-            {
-                return true;
-            }
-            if (Find.CurrentMap != null && gui.x < 700f && gui.y > height - 380f)
-            {
-                return true;
-            }
-            if (gui.x > width - 170f)
-            {
-                return true;
-            }
-            if (gui.y < 90f)
-            {
-                return true;
-            }
-
-            if (Find.CurrentMap == null)
-            {
-                return !IsWorldMapActive();
-            }
-
-            return false;
-        }
-
-        private static bool IsVanillaMapToolActive()
-        {
-            if (Find.DesignatorManager != null && Find.DesignatorManager.SelectedDesignator != null)
-            {
-                return true;
-            }
-            if (Find.Targeter != null && Find.Targeter.IsTargeting)
-            {
-                return true;
-            }
-            return false;
-        }
-
-        private static bool HasCurrentOneFingerLocalMapTouch()
-        {
-            try
-            {
-                if (Input.touchCount != 1)
-                {
-                    return false;
-                }
-
-                if (Find.CurrentMap == null || IsWorldMapActive())
-                {
-                    return false;
-                }
-
-                Touch touch = Input.GetTouch(0);
-                Vector2 gui = TouchToGui(touch.position);
-                return !IsLikelyUiPosition(gui);
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        private static bool TryCancelVanillaMapToolFromTwoFingerTap()
-        {
-            if (!twoFingerStartedWithVanillaMapTool || Find.CurrentMap == null || IsWorldMapActive())
-            {
-                return false;
-            }
-
-            if (!IsTwoFingerTapGesture())
-            {
-                return false;
-            }
-
-            if (!CancelVanillaMapTool())
-            {
-                return false;
-            }
-
-            suppressReleaseTap = true;
-            SuppressUiClickFallout();
-            TouchTapRepair.Clear();
-            CancelRimWorldDragBox();
-            return true;
-        }
-
-        private static bool CancelVanillaMapTool()
-        {
-            bool canceled = false;
-
-            if (Find.DesignatorManager != null && Find.DesignatorManager.SelectedDesignator != null)
-            {
-                Find.DesignatorManager.Deselect();
-                canceled = true;
-            }
-
-            if (Find.Targeter != null && Find.Targeter.IsTargeting)
-            {
-                Find.Targeter.StopTargeting();
-                canceled = true;
-            }
-
-            return canceled;
-        }
-
-        private static void SuppressUiClickFallout()
-        {
-            suppressWindowCloseUntilFrame = Math.Max(suppressWindowCloseUntilFrame, Time.frameCount + 12);
-            if (Input.touchCount >= 2 || mode == TouchMode.TwoFinger)
-            {
-                suppressUiClickUntilFrame = Math.Max(suppressUiClickUntilFrame, Time.frameCount + 12);
-            }
-        }
-
-        private static void SuppressVanillaMapInputFallout()
-        {
-            suppressVanillaMapInputUntilFrame = Math.Max(suppressVanillaMapInputUntilFrame, Time.frameCount + 12);
-        }
-
-        private static Vector2 TouchToGui(Vector2 touchPosition)
-        {
-            float scaleX = Screen.width > 0 ? UI.screenWidth / (float)Screen.width : 1f;
-            float scaleY = Screen.height > 0 ? UI.screenHeight / (float)Screen.height : 1f;
-            return new Vector2(touchPosition.x * scaleX, (Screen.height - touchPosition.y) * scaleY);
-        }
-
-        private static Vector3 GuiToScreenPoint(Vector2 gui)
-        {
-            float scaleX = UI.screenWidth > 0 ? Screen.width / (float)UI.screenWidth : 1f;
-            float scaleY = UI.screenHeight > 0 ? Screen.height / (float)UI.screenHeight : 1f;
-            return new Vector3(gui.x * scaleX, (UI.screenHeight - gui.y) * scaleY, 0f);
-        }
-
-        private static Vector3 GuiToMapPosition(Vector2 gui)
-        {
-            return UI.UIToMapPosition(new Vector2(gui.x, UI.screenHeight - gui.y));
-        }
-
         private static void BeginRimWorldDragBox()
         {
             DragBox dragBox = GetDragBox();
@@ -2223,8 +1200,11 @@ namespace RimTouch
                 return;
             }
 
-            DragBoxStartField.SetValue(dragBox, startMap);
-            DragBoxActiveField.SetValue(dragBox, true);
+            if (!ReflectionGuard.TrySetField(DragBoxStartField, dragBox, startMap))
+            {
+                return;
+            }
+            ReflectionGuard.TrySetField(DragBoxActiveField, dragBox, true);
         }
 
         private static void EnsureRimWorldDragBoxState()
@@ -2237,7 +1217,7 @@ namespace RimTouch
             DragBox dragBox = GetDragBox();
             if (dragBox != null)
             {
-                DragBoxActiveField.SetValue(dragBox, true);
+                ReflectionGuard.TrySetField(DragBoxActiveField, dragBox, true);
             }
         }
 
@@ -2252,11 +1232,11 @@ namespace RimTouch
 
             try
             {
-                SelectorSelectInsideDragBoxMethod.Invoke(selector, null);
+                ReflectionGuard.TryInvoke(SelectorSelectInsideDragBoxMethod, selector, null);
             }
             finally
             {
-                DragBoxActiveField.SetValue(dragBox, false);
+                ReflectionGuard.TrySetField(DragBoxActiveField, dragBox, false);
             }
         }
 
@@ -2265,7 +1245,7 @@ namespace RimTouch
             DragBox dragBox = GetDragBox();
             if (dragBox != null)
             {
-                DragBoxActiveField.SetValue(dragBox, false);
+                ReflectionGuard.TrySetField(DragBoxActiveField, dragBox, false);
             }
         }
 
@@ -2291,10 +1271,14 @@ namespace RimTouch
                 return;
             }
 
-            WorldDragBox dragBox = (WorldDragBox)WorldSelectorDragBoxField.GetValue(selector);
+            WorldDragBox dragBox;
+            if (!ReflectionGuard.TryGetField(WorldSelectorDragBoxField, selector, out dragBox))
+            {
+                return;
+            }
             if (dragBox != null)
             {
-                WorldDragBoxActiveField.SetValue(dragBox, false);
+                ReflectionGuard.TrySetField(WorldDragBoxActiveField, dragBox, false);
             }
         }
 
@@ -2305,48 +1289,13 @@ namespace RimTouch
             {
                 return null;
             }
-            return (DragBox)SelectorDragBoxField.GetValue(selector);
+            DragBox dragBox;
+            return ReflectionGuard.TryGetField(SelectorDragBoxField, selector, out dragBox) ? dragBox : null;
         }
 
         private static bool IsEnded(Touch touch)
         {
             return touch.phase == TouchPhase.Ended || touch.phase == TouchPhase.Canceled;
-        }
-
-        private static Vector3 GetCameraRootPos(CameraDriver cameraDriver)
-        {
-            return (Vector3)CameraRootPosField.GetValue(cameraDriver);
-        }
-
-        private static float GetCameraRootSize(CameraDriver cameraDriver)
-        {
-            return (float)CameraRootSizeField.GetValue(cameraDriver);
-        }
-
-        private static float GetMinZoomSize(CameraDriver cameraDriver)
-        {
-            if (cameraDriver != null && cameraDriver.config != null)
-            {
-                float min = cameraDriver.config.sizeRange.min;
-                if (min > 0f)
-                {
-                    return min;
-                }
-            }
-            return FallbackMinZoomSize;
-        }
-
-        private static float GetMaxZoomSize(CameraDriver cameraDriver)
-        {
-            if (cameraDriver != null && cameraDriver.config != null)
-            {
-                float max = cameraDriver.config.sizeRange.max;
-                if (max > 0f)
-                {
-                    return max;
-                }
-            }
-            return FallbackMaxZoomSize;
         }
 
         private static void FinishTouch()
@@ -2365,9 +1314,15 @@ namespace RimTouch
             twoFingerPanAnchorMap = Vector3.zero;
             rightClickDone = false;
             suppressReleaseTap = false;
+            uiScrollGestureActive = false;
+            uiScrollActiveRect = default(Rect);
+            uiScrollLastGui = Vector2.zero;
+            lastUiScrollApplyFrame = -1000;
             worldPanAnchorValid = false;
             worldPanAnchorPoint = Vector3.zero;
             panGestureDistance = 0f;
+            hasDetectedDragMovement = false;
+            dragMovementStartElapsed = 0f;
             lastTwoFingerDistance = 0f;
             lastTwoFingerMidpoint = Vector2.zero;
             twoFingerStartGuiA = Vector2.zero;
